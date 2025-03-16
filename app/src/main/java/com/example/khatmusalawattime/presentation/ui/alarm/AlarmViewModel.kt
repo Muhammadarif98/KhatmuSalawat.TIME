@@ -1,11 +1,14 @@
 package com.example.khatmusalawattime.presentation.ui.alarm
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.khatmusalawattime.R
@@ -41,10 +44,24 @@ class AlarmViewModel @Inject constructor(
     private val _formattedTime = MutableStateFlow("05:00")
     val formattedTime: StateFlow<String> = _formattedTime.asStateFlow()
     
+    // Новые StateFlow для хранения URI пользовательского изображения
+    private val _userImageUri = MutableStateFlow<Uri?>(null)
+    val userImageUri: StateFlow<Uri?> = _userImageUri.asStateFlow()
+    
+    // Состояние для режима звука (true = звук, false = вибрация)
+    private val _soundEnabled = MutableStateFlow(true)
+    val soundEnabled: StateFlow<Boolean> = _soundEnabled.asStateFlow()
+    
     init {
         Log.d(TAG, "Инициализация AlarmViewModel")
         // Инициализируем форматированное время при создании ViewModel
         updateFormattedTime(_selectedTime.value * 60)
+        
+        // Загружаем сохраненное изображение пользователя при инициализации
+        loadUserImage()
+        
+        // Загружаем настройку звука
+        loadSoundSettings()
         
         // Настраиваем наблюдение за изменениями времени
         viewModelScope.launch {
@@ -87,6 +104,7 @@ class AlarmViewModel @Inject constructor(
         val serviceIntent = Intent(application, TimerService::class.java).apply {
             action = TimerService.ACTION_START
             putExtra(TimerService.EXTRA_TIME, _selectedTime.value)
+            putExtra(TimerService.EXTRA_SOUND_ENABLED, _soundEnabled.value)
         }
         try {
             application.startService(serviceIntent)
@@ -214,6 +232,77 @@ class AlarmViewModel @Inject constructor(
             // Освобождаем ресурсы в случае ошибки
             mediaPlayer?.release()
         }
+    }
+    
+    // Загрузка сохраненного URI изображения из SharedPreferences
+    private fun loadUserImage() {
+        try {
+            val sharedPrefs = application.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
+            val savedImageUriString = sharedPrefs.getString("user_image_uri", null)
+            
+            savedImageUriString?.let { uriString ->
+                try {
+                    _userImageUri.value = Uri.parse(uriString)
+                    Log.d(TAG, "Загружено пользовательское изображение: $uriString")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка при парсинге URI изображения", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при загрузке изображения", e)
+        }
+    }
+    
+    // Сохранение выбранного изображения
+    fun saveUserImage(uri: Uri?) {
+        try {
+            _userImageUri.value = uri
+            
+            // Сохраняем URI в SharedPreferences
+            val sharedPrefs = application.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
+            sharedPrefs.edit {
+                if (uri != null) {
+                    putString("user_image_uri", uri.toString())
+                    Log.d(TAG, "Сохранено пользовательское изображение: ${uri.toString()}")
+                } else {
+                    remove("user_image_uri")
+                    Log.d(TAG, "Удалено пользовательское изображение")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при сохранении изображения", e)
+        }
+    }
+    
+    // Сброс изображения к изображению по умолчанию
+    fun resetUserImage() {
+        saveUserImage(null)
+    }
+    
+    // Загрузка настроек звука из SharedPreferences
+    private fun loadSoundSettings() {
+        try {
+            val sharedPrefs = application.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
+            val soundEnabled = sharedPrefs.getBoolean("sound_enabled", true)
+            _soundEnabled.value = soundEnabled
+            Log.d(TAG, "Загружена настройка звука: $soundEnabled")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при загрузке настроек звука", e)
+        }
+    }
+    
+    // Переключение режима звука/вибрации
+    fun toggleSoundMode() {
+        val newValue = !_soundEnabled.value
+        _soundEnabled.value = newValue
+        
+        // Сохраняем настройку в SharedPreferences
+        val sharedPrefs = application.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
+        sharedPrefs.edit {
+            putBoolean("sound_enabled", newValue)
+        }
+        
+        Log.d(TAG, "Режим звука изменен на: ${if (newValue) "Звук" else "Вибрация"}")
     }
     
     override fun onCleared() {

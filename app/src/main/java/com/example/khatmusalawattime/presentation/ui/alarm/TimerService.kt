@@ -10,6 +10,9 @@ import android.media.MediaPlayer
 import android.os.Build
 import android.os.CountDownTimer
 import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.khatmusalawattime.MainActivity
@@ -31,6 +34,7 @@ class TimerService : Service() {
         const val ACTION_RESUME = "com.example.khatmusalawattime.ACTION_RESUME"
         const val ACTION_RESET = "com.example.khatmusalawattime.ACTION_RESET"
         const val EXTRA_TIME = "com.example.khatmusalawattime.EXTRA_TIME"
+        const val EXTRA_SOUND_ENABLED = "com.example.khatmusalawattime.EXTRA_SOUND_ENABLED"
         
         // StateFlow для наблюдения за состоянием таймера
         private val _timerState = MutableStateFlow<TimerState>(TimerState.Idle)
@@ -57,6 +61,8 @@ class TimerService : Service() {
     private var timeLeftInMillis: Long = 0
     private var isTimerRunning = false
     private var mediaPlayer: MediaPlayer? = null
+    private var soundEnabled = true
+    private var vibrator: Vibrator? = null
     
     override fun onBind(intent: Intent?): IBinder? = null
     
@@ -64,10 +70,25 @@ class TimerService : Service() {
         super.onCreate()
         Log.d(TAG, "onCreate - Сервис создан")
         createNotificationChannel()
+        
+        // Инициализация вибратора
+        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand - Получена команда: ${intent?.action}")
+        
+        // Получаем режим звука, если он передан
+        intent?.getBooleanExtra(EXTRA_SOUND_ENABLED, true)?.let {
+            soundEnabled = it
+            Log.d(TAG, "Установлен режим звука: ${if (soundEnabled) "Звук включен" else "Вибрация"}")
+        }
         
         when (intent?.action) {
             ACTION_START -> {
@@ -178,8 +199,12 @@ class TimerService : Service() {
             // Оставаемся в foreground, чтобы избежать ANR и краша
             startForeground(NOTIFICATION_ID, createFinishedNotification())
             
-            // Воспроизводим звук
-            playAlarmSound()
+            // Воспроизводим звук или вибрацию в зависимости от настроек
+            if (soundEnabled) {
+                playAlarmSound()
+            } else {
+                vibrateDevice()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при завершении таймера: ${e.message}")
         }
@@ -360,11 +385,41 @@ class TimerService : Service() {
         }
     }
     
+    // Новый метод для вибрации устройства
+    private fun vibrateDevice() {
+        try {
+            Log.d(TAG, "Запуск вибрации")
+            if (vibrator?.hasVibrator() == true) {
+                // Шаблон вибрации: включено 500мс, пауза 500мс, включено 500мс и т.д.
+                val pattern = longArrayOf(0, 500, 500, 500, 500, 500, 500)
+                
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    // Для Android 8.0 и выше используем VibrationEffect
+                    val vibrationEffect = VibrationEffect.createWaveform(pattern, 0)
+                    vibrator?.vibrate(vibrationEffect)
+                } else {
+                    // Для более старых версий Android
+                    @Suppress("DEPRECATION")
+                    vibrator?.vibrate(pattern, 0)
+                }
+                
+                Log.d(TAG, "Вибрация активирована")
+            } else {
+                Log.w(TAG, "Устройство не поддерживает вибрацию")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при запуске вибрации: ${e.message}")
+        }
+    }
+    
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy - Сервис уничтожен")
         countDownTimer?.cancel()
         stopAlarmSound()
+        
+        // Остановка вибрации при уничтожении сервиса
+        vibrator?.cancel()
     }
 }
 

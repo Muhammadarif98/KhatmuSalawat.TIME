@@ -91,4 +91,10 @@ dependencies {
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     // Gson (парсинг JSON)
     implementation ("com.google.code.gson:gson:2.10.1")
+
+    // Coil для загрузки изображений
+    implementation("io.coil-kt:coil-compose:2.5.0")
+    
+    // Accompanist Permissions
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 }
