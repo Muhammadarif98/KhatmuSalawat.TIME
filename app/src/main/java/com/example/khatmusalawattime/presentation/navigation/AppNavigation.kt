@@ -40,7 +40,7 @@ fun AppNavigation() {
         
         // Экран счетчика
         composable("counter") { 
-            CounterScreen() 
+            CounterScreen(navController = navController) 
         }
         
         // Экран заметок

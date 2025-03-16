@@ -1,5 +1,6 @@
 package com.example.khatmusalawattime.presentation.ui.alarm
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -174,6 +175,7 @@ class AlarmViewModel @Inject constructor(
     }
     
     // Обновление форматированного времени для отображения
+    @SuppressLint("DefaultLocale")
     private fun updateFormattedTime(seconds: Long) {
         val minutes = seconds / 60
         val remainingSeconds = seconds % 60

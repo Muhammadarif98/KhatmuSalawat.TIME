@@ -32,34 +32,33 @@ fun BottomNavigationBar(
     currentRoute: String?
 ) {
     // Цвета
-    val bgColor = Color(0xFFF0E8C9).copy(alpha = 0.85f)
+    val bgColor = Color(0xFFF0E8C9)
     val textColor = Color(0xFF8B7E66)
     
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 40.dp, vertical = 6.dp),
+            .padding(horizontal = 40.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth(0.8f) // Островок на 80% ширины экрана
-                .height(60.dp) // Увеличили высоту навигации
-                .clip(RoundedCornerShape(25.dp))
-                .shadow(3.dp, RoundedCornerShape(25.dp))
+                .fillMaxWidth(0.85f)
+                .height(70.dp)
+                .clip(RoundedCornerShape(28.dp))
+                .shadow(5.dp, RoundedCornerShape(28.dp))
                 .background(bgColor)
-                .padding(horizontal = 12.dp, vertical = 10.dp), // Увеличили вертикальный отступ
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Кнопка заметок (слева)
             Box(
                 modifier = Modifier
-                    .size(46.dp) // Увеличили размер кнопки
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(15.dp))
                     .background(if (currentRoute == "notes") Color.White.copy(alpha = 0.6f) else Color.Transparent)
                     .clickable { navController.navigate("notes") {
-                        // Избегаем создания нескольких копий экрана в стеке
                         popUpTo("notes") { inclusive = true }
                         launchSingleTop = true
                     } }
@@ -67,21 +66,20 @@ fun BottomNavigationBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_edit), // Стандартная иконка карандаша
+                    painter = painterResource(id = R.drawable.ic_notes),
                     contentDescription = "Заметки",
                     tint = if (currentRoute == "notes") BlueAccent else textColor,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(32.dp)
                 )
             }
             
             // Кнопка главного экрана (по центру)
             Box(
                 modifier = Modifier
-                    .size(46.dp) // Увеличили размер кнопки
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(15.dp))
                     .background(if (currentRoute == "home") Color.White.copy(alpha = 0.6f) else Color.Transparent)
                     .clickable { navController.navigate("home") {
-                        // Избегаем создания нескольких копий экрана в стеке
                         popUpTo("home") { inclusive = true }
                         launchSingleTop = true
                     } }
@@ -89,21 +87,20 @@ fun BottomNavigationBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_mosque), // Иконка мечети
+                    painter = painterResource(id = R.drawable.ic_mosque),
                     contentDescription = "Главная",
                     tint = if (currentRoute == "home") BlueAccent else textColor,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(32.dp)
                 )
             }
             
             // Кнопка настроек (справа)
             Box(
                 modifier = Modifier
-                    .size(46.dp) // Увеличили размер кнопки
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(15.dp))
                     .background(if (currentRoute == "settings") Color.White.copy(alpha = 0.6f) else Color.Transparent)
                     .clickable { navController.navigate("settings") {
-                        // Избегаем создания нескольких копий экрана в стеке
                         popUpTo("settings") { inclusive = true }
                         launchSingleTop = true
                     } }
@@ -111,10 +108,10 @@ fun BottomNavigationBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_settings), // Стандартная иконка уведомления
+                    painter = painterResource(id = R.drawable.ic_settings),
                     contentDescription = "Настройки",
                     tint = if (currentRoute == "settings") BlueAccent else textColor,
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(32.dp)
                 )
             }
         }
