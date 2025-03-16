@@ -1,0 +1,225 @@
+package com.example.khatmusalawattime.presentation.ui.alarm
+
+import android.app.Application
+import android.content.Intent
+import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.khatmusalawattime.R
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+private const val TAG = "AlarmViewModel"
+
+@HiltViewModel
+class AlarmViewModel @Inject constructor(
+    private val application: Application
+) : AndroidViewModel(application) {
+    
+    // Отображаемое время в минутах
+    private val _selectedTime = MutableStateFlow(5L)
+    val selectedTime: StateFlow<Long> = _selectedTime.asStateFlow()
+    
+    // Наблюдаем за состоянием таймера из сервиса
+    val timerState = TimerService.timerState
+    
+    // Наблюдаем за оставшимся временем из сервиса
+    val timeLeft = TimerService.timeLeft
+    
+    // Наблюдаем за статусом таймера из сервиса
+    val isActive = TimerService.isActive
+    
+    // Состояние для форматированного отображения времени
+    private val _formattedTime = MutableStateFlow("05:00")
+    val formattedTime: StateFlow<String> = _formattedTime.asStateFlow()
+    
+    init {
+        Log.d(TAG, "Инициализация AlarmViewModel")
+        // Инициализируем форматированное время при создании ViewModel
+        updateFormattedTime(_selectedTime.value * 60)
+        
+        // Настраиваем наблюдение за изменениями времени
+        viewModelScope.launch {
+            Log.d(TAG, "Настройка наблюдения за оставшимся временем")
+            timeLeft.collectLatest { secondsLeft ->
+                Log.d(TAG, "Time left update: $secondsLeft seconds")
+                if (TimerService.isActive.value) {
+                    updateFormattedTime(secondsLeft)
+                }
+            }
+        }
+        
+        // Наблюдаем за состоянием таймера для дополнительной синхронизации
+        viewModelScope.launch {
+            Log.d(TAG, "Настройка наблюдения за состоянием таймера")
+            timerState.collectLatest { state ->
+                Log.d(TAG, "Timer state update: $state")
+                if (state is TimerState.Idle) {
+                    // Если таймер в режиме ожидания, обновляем отображаемое время на основе выбранного времени
+                    updateFormattedTime(_selectedTime.value * 60)
+                }
+            }
+        }
+    }
+    
+    // Выбор времени таймера
+    fun selectTime(minutes: Long) {
+        Log.d(TAG, "Выбрано время: $minutes минут")
+        _selectedTime.value = minutes
+        
+        // Обновляем отображаемое время только если таймер не активен
+        if (timerState.value !is TimerState.Running && timerState.value !is TimerState.Paused) {
+            updateFormattedTime(minutes * 60)
+        }
+    }
+    
+    // Запуск таймера
+    fun startTimer() {
+        Log.d(TAG, "Запуск таймера с ${_selectedTime.value} минутами")
+        val serviceIntent = Intent(application, TimerService::class.java).apply {
+            action = TimerService.ACTION_START
+            putExtra(TimerService.EXTRA_TIME, _selectedTime.value)
+        }
+        try {
+            application.startService(serviceIntent)
+            Log.d(TAG, "Сервис таймера успешно запущен")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при запуске сервиса таймера", e)
+        }
+    }
+    
+    // Пауза таймера
+    fun pauseTimer() {
+        Log.d(TAG, "Пауза таймера")
+        val serviceIntent = Intent(application, TimerService::class.java).apply {
+            action = TimerService.ACTION_PAUSE
+        }
+        try {
+            application.startService(serviceIntent)
+            Log.d(TAG, "Команда паузы отправлена в сервис")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при отправке команды паузы", e)
+        }
+    }
+    
+    // Возобновление таймера
+    fun resumeTimer() {
+        Log.d(TAG, "Возобновление таймера")
+        val serviceIntent = Intent(application, TimerService::class.java).apply {
+            action = TimerService.ACTION_RESUME
+        }
+        try {
+            application.startService(serviceIntent)
+            Log.d(TAG, "Команда возобновления отправлена в сервис")
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при отправке команды возобновления", e)
+        }
+    }
+    
+    // Сброс таймера
+    fun resetTimer() {
+        Log.d(TAG, "Сброс таймера")
+        val serviceIntent = Intent(application, TimerService::class.java).apply {
+            action = TimerService.ACTION_RESET
+        }
+        try {
+            application.startService(serviceIntent)
+            Log.d(TAG, "Команда сброса отправлена в сервис")
+            
+            // Обновляем отображаемое время на основе выбранного времени
+            updateFormattedTime(_selectedTime.value * 60)
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при отправке команды сброса", e)
+        }
+    }
+    
+    // Обработка нажатия на кнопку play/pause
+    fun toggleTimerState() {
+        Log.d(TAG, "Переключение состояния таймера: ${timerState.value}")
+        when (timerState.value) {
+            is TimerState.Running -> pauseTimer()
+            is TimerState.Paused -> resumeTimer()
+            is TimerState.Idle, is TimerState.Finished -> startTimer()
+        }
+    }
+    
+    // Обновление форматированного времени для отображения
+    private fun updateFormattedTime(seconds: Long) {
+        val minutes = seconds / 60
+        val remainingSeconds = seconds % 60
+        val newFormattedTime = String.format("%02d:%02d", minutes, remainingSeconds)
+        Log.d(TAG, "Обновление отображаемого времени: $newFormattedTime")
+        _formattedTime.value = newFormattedTime
+    }
+    
+    // Проверка воспроизведения звука
+    fun testSound() {
+        Log.d(TAG, "Проверка звука таймера")
+        var mediaPlayer: MediaPlayer? = null
+        
+        try {
+            // Пробуем создать MediaPlayer и воспроизвести звук
+            mediaPlayer = MediaPlayer.create(application, R.raw.timer_finish)
+            
+            if (mediaPlayer == null) {
+                Log.e(TAG, "Не удалось создать MediaPlayer для тестового звука. Файл может отсутствовать или быть поврежденным")
+                return
+            }
+            
+            // Настройки воспроизведения
+            mediaPlayer.setVolume(1.0f, 1.0f)
+            
+            // Добавляем обработчик завершения
+            mediaPlayer.setOnCompletionListener {
+                Log.d(TAG, "Тестовый звук завершен")
+                it.release()
+            }
+            
+            // Добавляем обработчик ошибок
+            mediaPlayer.setOnErrorListener { mp, what, extra ->
+                Log.e(TAG, "Ошибка при воспроизведении тестового звука: код $what, $extra")
+                mp.release()
+                false
+            }
+            
+            // Начинаем воспроизведение
+            mediaPlayer.start()
+            Log.d(TAG, "Тестовый звук запущен")
+            
+            // Остановка звука через 3 секунды
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    if (mediaPlayer.isPlaying) {
+                        mediaPlayer.stop()
+                    }
+                    mediaPlayer.release()
+                    Log.d(TAG, "Тестовый звук остановлен")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка при остановке тестового звука: ${e.message}")
+                }
+            }, 3000)
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при воспроизведении тестового звука: ${e.message}")
+            e.printStackTrace()
+            
+            // Освобождаем ресурсы в случае ошибки
+            mediaPlayer?.release()
+        }
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        Log.d(TAG, "onCleared - ViewModel уничтожена")
+        // При уничтожении ViewModel не сбрасываем таймер автоматически,
+        // так как он должен продолжать работать в фоне
+    }
+} 
