@@ -2,6 +2,8 @@ package com.example.khatmusalawattime.presentation.ui.alarm
 
 import android.Manifest
 import android.net.Uri
+import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -50,6 +52,7 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.khatmusalawattime.R
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -75,8 +78,15 @@ fun AlarmScreen(
     // Контекст для доступа к ресурсам
     val context = LocalContext.current
     
+    // Определяем, какое разрешение запрашивать в зависимости от версии Android
+    val galleryPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.READ_MEDIA_IMAGES
+    } else {
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    }
+    
     // Запрос разрешения на доступ к галерее
-    val galleryPermissionState = rememberPermissionState(permission = Manifest.permission.READ_EXTERNAL_STORAGE)
+    val galleryPermissionState = rememberPermissionState(permission = galleryPermission)
     
     // Launcher для выбора изображения из галереи
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -140,14 +150,27 @@ fun AlarmScreen(
                                     )
                                 )
                                 .clickable {
-                                    galleryLauncher.launch("image/*")
+                                    // Проверяем разрешение перед открытием галереи
+                                    if (galleryPermissionState.status.isGranted) {
+                                        galleryLauncher.launch("image/*")
+                                    } else {
+                                        // Запрашиваем разрешение
+                                        galleryPermissionState.launchPermissionRequest()
+                                    }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
                             // Показываем пользовательское изображение, если оно выбрано
                             userImageUri?.let { uri ->
                                 Image(
-                                    painter = rememberAsyncImagePainter(model = uri),
+                                    painter = rememberAsyncImagePainter(
+                                        model = uri,
+                                        onError = {
+                                            // В случае ошибки загрузки изображения, сбрасываем его
+                                            Log.e("AlarmScreen", "Ошибка загрузки изображения: ${it.result.throwable.message}")
+                                            viewModel.resetUserImage()
+                                        }
+                                    ),
                                     contentDescription = "Пользовательское изображение",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop

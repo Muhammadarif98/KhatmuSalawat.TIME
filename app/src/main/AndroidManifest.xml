@@ -25,6 +25,9 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:stateNotNeeded="false"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.KhatmuSalawatTIME">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

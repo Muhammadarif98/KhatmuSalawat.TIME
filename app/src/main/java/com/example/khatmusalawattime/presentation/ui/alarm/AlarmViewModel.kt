@@ -3,6 +3,8 @@ package com.example.khatmusalawattime.presentation.ui.alarm
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Handler
@@ -18,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 import javax.inject.Inject
 
 private const val TAG = "AlarmViewModel"
@@ -234,43 +238,114 @@ class AlarmViewModel @Inject constructor(
         }
     }
     
+    // Сохранение выбранного изображения
+    fun saveUserImage(uri: Uri?) {
+        try {
+            if (uri == null) {
+                // Если uri null, просто очищаем сохраненное изображение
+                _userImageUri.value = null
+                
+                // Удаляем запись в SharedPreferences
+                val sharedPrefs = application.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
+                sharedPrefs.edit {
+                    remove("user_image_path")
+                    Log.d(TAG, "Удалено пользовательское изображение")
+                }
+                
+                // Удаляем сохраненный файл, если он есть
+                val savedImageDir = File(application.filesDir, "user_images")
+                val savedImageFile = File(savedImageDir, "timer_background.jpg")
+                if (savedImageFile.exists()) {
+                    savedImageFile.delete()
+                }
+                
+                return
+            }
+            
+            // Создаем директорию для хранения изображений, если ее нет
+            val imageDir = File(application.filesDir, "user_images")
+            if (!imageDir.exists()) {
+                imageDir.mkdirs()
+            }
+            
+            // Путь для сохраненного изображения
+            val imageFile = File(imageDir, "timer_background.jpg")
+            
+            // Загружаем и масштабируем изображение для экономии места
+            application.contentResolver.openInputStream(uri)?.use { input ->
+                // Декодируем размеры изображения без загрузки в память
+                val options = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                BitmapFactory.decodeStream(input, null, options)
+                input.close()
+                
+                // Повторно открываем поток
+                application.contentResolver.openInputStream(uri)?.use { newInput ->
+                    // Рассчитываем масштаб для уменьшения (максимальная сторона 1080px)
+                    val maxDimension = 1080
+                    val scale = Math.max(1, Math.min(
+                        options.outWidth / maxDimension,
+                        options.outHeight / maxDimension
+                    ))
+                    
+                    // Настраиваем опции для масштабирования
+                    val scaleOptions = BitmapFactory.Options().apply {
+                        inSampleSize = scale
+                    }
+                    
+                    // Загружаем изображение с масштабированием
+                    val bitmap = BitmapFactory.decodeStream(newInput, null, scaleOptions)
+                    
+                    // Сохраняем сжатое изображение
+                    FileOutputStream(imageFile).use { output ->
+                        bitmap?.compress(Bitmap.CompressFormat.JPEG, 85, output)
+                        bitmap?.recycle()
+                    }
+                }
+            }
+            
+            // Создаем URI из файла для отображения
+            val savedUri = Uri.fromFile(imageFile)
+            _userImageUri.value = savedUri
+            
+            // Сохраняем путь к файлу в SharedPreferences
+            val sharedPrefs = application.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
+            sharedPrefs.edit {
+                putString("user_image_path", imageFile.absolutePath)
+                Log.d(TAG, "Сохранено пользовательское изображение: ${imageFile.absolutePath}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка при сохранении изображения", e)
+        }
+    }
+    
     // Загрузка сохраненного URI изображения из SharedPreferences
     private fun loadUserImage() {
         try {
             val sharedPrefs = application.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
-            val savedImageUriString = sharedPrefs.getString("user_image_uri", null)
+            val savedImagePath = sharedPrefs.getString("user_image_path", null)
             
-            savedImageUriString?.let { uriString ->
+            savedImagePath?.let { path ->
                 try {
-                    _userImageUri.value = Uri.parse(uriString)
-                    Log.d(TAG, "Загружено пользовательское изображение: $uriString")
+                    val imageFile = File(path)
+                    if (imageFile.exists()) {
+                        val fileUri = Uri.fromFile(imageFile)
+                        _userImageUri.value = fileUri
+                        Log.d(TAG, "Загружено пользовательское изображение: $path")
+                    } else {
+                        Log.w(TAG, "Файл изображения не найден: $path")
+                        // Если файл не существует, очищаем настройку
+                        sharedPrefs.edit {
+                            remove("user_image_path")
+                        }
+                    }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Ошибка при парсинге URI изображения", e)
+                    Log.e(TAG, "Ошибка при загрузке файла изображения", e)
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при загрузке изображения", e)
-        }
-    }
-    
-    // Сохранение выбранного изображения
-    fun saveUserImage(uri: Uri?) {
-        try {
-            _userImageUri.value = uri
-            
-            // Сохраняем URI в SharedPreferences
-            val sharedPrefs = application.getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
-            sharedPrefs.edit {
-                if (uri != null) {
-                    putString("user_image_uri", uri.toString())
-                    Log.d(TAG, "Сохранено пользовательское изображение: ${uri.toString()}")
-                } else {
-                    remove("user_image_uri")
-                    Log.d(TAG, "Удалено пользовательское изображение")
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Ошибка при сохранении изображения", e)
         }
     }
     

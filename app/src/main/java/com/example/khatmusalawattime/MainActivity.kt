@@ -67,6 +67,29 @@ class MainActivity : ComponentActivity() {
         }
     }
     
+    // Переопределяем метод onSaveInstanceState для лучшего сохранения состояния приложения
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        Log.d(TAG, "onSaveInstanceState: сохраняем состояние активити")
+    }
+    
+    // Переопределяем метод onRestoreInstanceState для восстановления состояния
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        Log.d(TAG, "onRestoreInstanceState: восстанавливаем состояние активити")
+    }
+    
+    // Переопределяем метод для обработки низкоуровневых событий памяти
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        Log.d(TAG, "onTrimMemory вызван с уровнем: $level")
+        // Рекомендуется сохранять важное состояние при TRIM_MEMORY_UI_HIDDEN (уровень 20)
+        if (level == TRIM_MEMORY_UI_HIDDEN) {
+            Log.d(TAG, "Приложение ушло в фон, сохраняем состояние")
+            // Здесь можно добавить дополнительное сохранение
+        }
+    }
+    
     private fun requestNotificationPermission() {
         // Для Android 13 (API level 33) и выше требуется явное разрешение
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
