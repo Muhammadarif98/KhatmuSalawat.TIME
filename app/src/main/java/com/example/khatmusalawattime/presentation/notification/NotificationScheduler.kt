@@ -1,49 +1,55 @@
 package com.example.khatmusalawattime.presentation.notification
 
-import NotificationWorker
+
+import android.annotation.SuppressLint
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
-import androidx.work.Data
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
+import android.content.Intent
+import android.os.Build
 import com.example.khatmusalawattime.domain.model.ReminderData
-import java.util.concurrent.TimeUnit
+import java.util.Calendar
 
-class NotificationScheduler(private val context: Context) {
-
-    fun scheduleDailyNotification(reminderData: ReminderData) {
-        // Преобразуем reminderData в Data
-        val inputData = Data.Builder()
-            .putString("datesKhunzakhSalawat", reminderData.datesKhunzakhSalawat.toString())
-            .putString("datesKhunzakhHatmu", reminderData.datesKhunzakhHatmu.toString())
-            .build()
-
-        // Создаем запрос на ежедневное выполнение в 15:00
-        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(24, TimeUnit.HOURS)
-            .setInitialDelay(calculateInitialDelay(), TimeUnit.MILLISECONDS)
-            .setInputData(inputData) // Передаем данные
-            .build()
-
-        // Планируем задачу
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "DailyNotificationWork",
-            ExistingPeriodicWorkPolicy.REPLACE,
-            workRequest
-        )
+@SuppressLint("ScheduleExactAlarm")
+fun scheduleDailyNotification(context: Context, reminderData: ReminderData, currentDate: String) {
+    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+    val intent = Intent(context, NotificationReceiver::class.java).apply {
+        // Передаем данные в Intent
+        putExtra("REMINDER_DATA", reminderData)
+        putExtra("CURRENT_DATE", currentDate)
     }
 
-    private fun calculateInitialDelay(): Long {
-        // Вычисляем задержку до 15:00
-        val currentTime = System.currentTimeMillis()
-        val calendar = java.util.Calendar.getInstance()
-        calendar.set(java.util.Calendar.HOUR_OF_DAY, 15)
-        calendar.set(java.util.Calendar.MINUTE, 0)
-        calendar.set(java.util.Calendar.SECOND, 0)
+    val pendingIntent = PendingIntent.getBroadcast(
+        context,
+        0,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 
-        if (calendar.timeInMillis <= currentTime) {
-            calendar.add(java.util.Calendar.DAY_OF_MONTH, 1) // Если 15:00 уже прошло, планируем на завтра
-        }
+    val calendar = Calendar.getInstance().apply {
+        // add(Calendar.MINUTE, 2)
+        set(Calendar.HOUR_OF_DAY, 16) // Установите время, например, 8:00 утра
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+    }
 
-        return calendar.timeInMillis - currentTime
+    // Если выбранное время уже прошло сегодня, установите его на завтра
+    if (Calendar.getInstance().after(calendar)) {
+        calendar.add(Calendar.DAY_OF_MONTH, 1)
+    }
+
+    // Установите повторяющийся будильник
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            pendingIntent
+        )
+    } else {
+        alarmManager.setExact(
+            AlarmManager.RTC_WAKEUP,
+            calendar.timeInMillis,
+            pendingIntent
+        )
     }
 }

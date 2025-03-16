@@ -9,6 +9,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.khatmusalawattime.presentation.ui.alarm.AlarmScreen
 import com.example.khatmusalawattime.presentation.ui.counter.CounterScreen
 import com.example.khatmusalawattime.presentation.ui.home.HomeScreen
+import com.example.khatmusalawattime.presentation.ui.notes.NotesScreen
+import com.example.khatmusalawattime.presentation.ui.settings.SettingsScreen
 
 /**
  * Навигация приложения.
@@ -22,13 +24,33 @@ fun AppNavigation() {
         navController = navController,
         startDestination = "home"
     ) {
+        // Главный экран
         composable("home") {
             HomeScreen(
+                navController = navController,
                 onNavigateToAlarm = { navController.navigate("alarm") },
                 onNavigateToCounter = { navController.navigate("counter") }
             )
         }
-        composable("alarm") { AlarmScreen() }
-        composable("counter") { CounterScreen() }
+        
+        // Экран таймера (будильника)
+        composable("alarm") { 
+            AlarmScreen(navController = navController) 
+        }
+        
+        // Экран счетчика
+        composable("counter") { 
+            CounterScreen() 
+        }
+        
+        // Экран заметок
+        composable("notes") {
+            NotesScreen(navController = navController)
+        }
+        
+        // Экран настроек
+        composable("settings") {
+            SettingsScreen(navController = navController)
+        }
     }
 }

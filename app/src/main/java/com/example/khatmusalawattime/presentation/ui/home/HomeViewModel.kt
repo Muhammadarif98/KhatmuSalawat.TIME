@@ -1,5 +1,6 @@
 package com.example.khatmusalawattime.presentation.ui.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.khatmusalawattime.domain.model.ReminderData
@@ -32,12 +33,12 @@ class HomeViewModel @Inject constructor(
     fun loadReminderData() {
         viewModelScope.launch {
             try {
-                // Получаем данные из UseCase
                 val data = getReminderTimeUseCase()
                 _reminderData.value = data
+                Log.d("HomeViewModel", "Данные загружены: $data")
             } catch (e: Exception) {
-                // Обрабатываем ошибку
                 _error.value = e.message ?: "Произошла ошибка при загрузке данных"
+                Log.e("HomeViewModel", "Ошибка: ${e.message}")
             }
         }
     }
