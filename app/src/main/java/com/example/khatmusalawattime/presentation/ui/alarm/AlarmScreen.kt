@@ -265,7 +265,7 @@ fun AlarmScreen(
                             )
                             
                             // Большой текст секунд
-                            Text(
+    Text(
                                 text = seconds,
                                 style = TextStyle(
                                     fontSize = 100.sp,
