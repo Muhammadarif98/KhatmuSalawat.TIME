@@ -44,7 +44,7 @@ fun BottomNavigationBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .height(70.dp)
+                .height(80.dp)
                 .clip(RoundedCornerShape(28.dp))
                 .shadow(5.dp, RoundedCornerShape(28.dp))
                 .background(bgColor)
@@ -55,7 +55,7 @@ fun BottomNavigationBar(
             // Кнопка заметок (слева)
             Box(
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(62.dp)
                     .clip(RoundedCornerShape(15.dp))
                     .background(if (currentRoute == "notes") Color.White.copy(alpha = 0.6f) else Color.Transparent)
                     .clickable { navController.navigate("notes") {
@@ -76,7 +76,7 @@ fun BottomNavigationBar(
             // Кнопка главного экрана (по центру)
             Box(
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(62.dp)
                     .clip(RoundedCornerShape(15.dp))
                     .background(if (currentRoute == "home") Color.White.copy(alpha = 0.6f) else Color.Transparent)
                     .clickable { navController.navigate("home") {
@@ -97,7 +97,7 @@ fun BottomNavigationBar(
             // Кнопка настроек (справа)
             Box(
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(62.dp)
                     .clip(RoundedCornerShape(15.dp))
                     .background(if (currentRoute == "settings") Color.White.copy(alpha = 0.6f) else Color.Transparent)
                     .clickable { navController.navigate("settings") {

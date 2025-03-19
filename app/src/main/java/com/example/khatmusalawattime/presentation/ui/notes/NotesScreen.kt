@@ -3,6 +3,7 @@ package com.example.khatmusalawattime.presentation.ui.notes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,15 +24,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -44,19 +42,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.khatmusalawattime.R
 import com.example.khatmusalawattime.domain.model.GoalList
 import com.example.khatmusalawattime.domain.model.Task
 import com.example.khatmusalawattime.presentation.theme.BlueAccent
@@ -71,6 +74,7 @@ fun NotesScreen(
     val selectedGoalList by viewModel.selectedGoalList.collectAsState()
     val isAddingNewList by viewModel.isAddingNewList.collectAsState()
     val isAddingNewTask by viewModel.isAddingNewTask.collectAsState()
+    val resetSwipeTrigger by viewModel.resetSwipeAnimation.collectAsState()
 
     val backgroundColor = Color(0xFFECDCC3)
     val surfaceColor = Color(0xFFDDCBB8)
@@ -79,18 +83,18 @@ fun NotesScreen(
 
     // Состояние для редактирования списка прямо в элементе
     var editingListId by remember { mutableStateOf<String?>(null) }
-    
+
     // Состояние для создания нового списка
-    var newListTitle by remember { 
+    var newListTitle by remember {
         mutableStateOf(
             TextFieldValue(
                 text = "",
                 selection = TextRange(0)
             )
-        ) 
+        )
     }
     val focusRequesterNewList = remember { FocusRequester() }
-    
+
     // Автоматически фокусируемся при включении редактирования
     LaunchedEffect(isAddingNewList) {
         if (isAddingNewList) {
@@ -110,44 +114,82 @@ fun NotesScreen(
                 )
             },
             bottomBar = {
-                NavigationBar(
-                    containerColor = surfaceColor
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 40.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    NavigationBarItem(
-                        selected = true,
-                        onClick = { /* Уже на экране заметок */ },
-                        icon = { 
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .height(80.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .shadow(5.dp, RoundedCornerShape(28.dp))
+                            .background(surfaceColor)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Кнопка заметок (слева)
+                        Box(
+                            modifier = Modifier
+                                .size(62.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .background(Color.White.copy(alpha = 0.6f)) // Активна на экране заметок
+                                .clickable { /* Уже на экране заметок */ }
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.Edit, 
-                                contentDescription = "Заметки"
-                            ) 
-                        },
-                        label = { Text("Заметки") },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = accentColor,
-                            selectedTextColor = accentColor,
-                            indicatorColor = backgroundColor
-                        )
-                    )
-                    NavigationBarItem(
-                        selected = false,
-                        onClick = { /* Переход на главный экран */ 
-                            navController.navigate("home") {
-                                popUpTo("notes") { inclusive = true }
+                                painter = painterResource(id = R.drawable.ic_notes),
+                                contentDescription = "Заметки",
+                                tint = accentColor, // Акцентный цвет для активной вкладки
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(width = 62.dp, height = 62.dp)
+                                .clip(RoundedCornerShape(15.dp)), // Активна на экране заметок,
+                            contentAlignment = Alignment.Center
+                        ) {
+
+                        }
+                        // Кнопка главного экрана (по центру)
+                        Box(
+                            modifier = Modifier
+                                .size(width = 62.dp, height = 62.dp)
+                                .clip(RoundedCornerShape(15.dp))
+                                .background(Color.Transparent)
+                                .clickable {
+                                    navController.navigate("home") {
+                                        popUpTo("notes") { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                                .padding(horizontal = 4.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ArrowBack,
+                                    contentDescription = "Главная",
+                                    tint = textColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Text(
+                                    text = "Главная",
+                                    fontSize = 12.sp,
+                                    color = textColor.copy(alpha = 0.6f),
+                                    textAlign = TextAlign.Center
+                                )
                             }
-                        },
-                        icon = { 
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack, 
-                                contentDescription = "Главная"
-                            ) 
-                        },
-                        label = { Text("Главная") },
-                        colors = NavigationBarItemDefaults.colors(
-                            unselectedIconColor = textColor.copy(alpha = 0.6f),
-                            unselectedTextColor = textColor.copy(alpha = 0.6f)
-                        )
-                    )
+                        }
+                    }
                 }
             }
         ) { paddingValues ->
@@ -173,7 +215,8 @@ fun NotesScreen(
                                     onDone = {
                                         if (newListTitle.text.isNotBlank()) {
                                             viewModel.addNewList(newListTitle.text)
-                                            newListTitle = TextFieldValue("", selection = TextRange(0))
+                                            newListTitle =
+                                                TextFieldValue("", selection = TextRange(0))
                                             viewModel.toggleAddingNewList()
                                         }
                                     }
@@ -193,7 +236,7 @@ fun NotesScreen(
                         }
                     },
                     trailingContent = {
-                        IconButton(onClick = { 
+                        IconButton(onClick = {
                             if (isAddingNewList) {
                                 if (newListTitle.text.isNotBlank()) {
                                     viewModel.addNewList(newListTitle.text)
@@ -214,9 +257,9 @@ fun NotesScreen(
                     modifier = Modifier.height(60.dp),
                     colors = ListItemDefaults.colors(containerColor = surfaceColor)
                 )
-                
+
                 // Добавляем отступ
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Список целей
                 LazyColumn(
@@ -225,24 +268,25 @@ fun NotesScreen(
                         GoalListItem(
                             goalList = goalList,
                             onItemClick = { viewModel.selectGoalList(goalList) },
-                            onEditClick = { 
+                            onEditClick = {
                                 editingListId = goalList.id
                             },
                             onDeleteClick = { viewModel.deleteList(goalList.id) },
                             editingId = editingListId,
-                            onSaveEdit = { newTitle -> 
+                            onSaveEdit = { newTitle ->
                                 viewModel.updateListTitle(goalList.id, newTitle)
                                 editingListId = null
                             },
                             onCancelEdit = { editingListId = null },
                             backgroundColor = surfaceColor,
                             textColor = textColor,
-                            accentColor = accentColor
+                            accentColor = accentColor,
+                            resetSwipeTrigger = resetSwipeTrigger
                         )
-                        
+
                         // Добавляем Spacer после каждого элемента, кроме последнего
                         if (index < goalLists.size - 1) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
                     }
                 }
@@ -276,27 +320,28 @@ fun GoalListItem(
     onCancelEdit: () -> Unit,
     backgroundColor: Color,
     textColor: Color,
-    accentColor: Color
+    accentColor: Color,
+    resetSwipeTrigger: Long
 ) {
     val isEditing = goalList.id == editingId
-    var editedTitle by remember(editingId) { 
+    var editedTitle by remember(editingId) {
         mutableStateOf(
             TextFieldValue(
                 text = goalList.title,
                 selection = TextRange(goalList.title.length) // Курсор в конце текста
             )
-        ) 
+        )
     }
     val focusRequester = remember { FocusRequester() }
     val itemHeight = 60.dp  // Фиксированная высота для всех элементов
-    
+
     // Эффект для автоматического фокуса при редактировании
     LaunchedEffect(isEditing) {
         if (isEditing) {
             focusRequester.requestFocus()
         }
     }
-    
+
     if (isEditing) {
         // Режим редактирования - без свайпа
         ListItem(
@@ -337,7 +382,8 @@ fun GoalListItem(
         SwipeToAction(
             onEdit = onEditClick,
             onDelete = onDeleteClick,
-            editIconTint = accentColor
+            editIconTint = accentColor,
+            resetTrigger = resetSwipeTrigger
         ) {
             ListItem(
                 headlineContent = {
@@ -382,21 +428,22 @@ fun TasksScreen(
     navController: NavController
 ) {
     val isAddingNewTask by viewModel.isAddingNewTask.collectAsState()
-    
+    val resetSwipeTrigger by viewModel.resetSwipeAnimation.collectAsState()
+
     // Состояние для редактирования задачи прямо в элементе
     var editingTaskId by remember { mutableStateOf<String?>(null) }
-    
+
     // Состояние для создания новой задачи
-    var newTaskTitle by remember { 
+    var newTaskTitle by remember {
         mutableStateOf(
             TextFieldValue(
                 text = "",
                 selection = TextRange(0)
             )
-        ) 
+        )
     }
     val focusRequesterNewTask = remember { FocusRequester() }
-    
+
     // Автоматически фокусируемся при включении редактирования
     LaunchedEffect(isAddingNewTask) {
         if (isAddingNewTask) {
@@ -423,40 +470,76 @@ fun TasksScreen(
             )
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = surfaceColor
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 40.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { /* Уже на экране задач */ },
-                    icon = { 
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .height(80.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .shadow(5.dp, RoundedCornerShape(28.dp))
+                        .background(surfaceColor)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Кнопка задач (слева)
+                    Box(
+                        modifier = Modifier
+                            .size(62.dp)
+                            .clip(RoundedCornerShape(15.dp))
+                            .background(Color.White.copy(alpha = 0.6f)) // Активна на экране заметок
+                            .clickable { /* Уже на экране заметок */ }
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Edit, 
-                            contentDescription = "Задачи"
-                        ) 
-                    },
-                    label = { Text("Задачи") },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = accentColor,
-                        selectedTextColor = accentColor,
-                        indicatorColor = backgroundColor
-                    )
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { onBackClick() },
-                    icon = { 
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack, 
-                            contentDescription = "Назад к спискам"
-                        ) 
-                    },
-                    label = { Text("Списки") },
-                    colors = NavigationBarItemDefaults.colors(
-                        unselectedIconColor = textColor.copy(alpha = 0.6f),
-                        unselectedTextColor = textColor.copy(alpha = 0.6f)
-                    )
-                )
+                            painter = painterResource(id = R.drawable.ic_notes),
+                            contentDescription = "Заметки",
+                            tint = accentColor, // Акцентный цвет для активной вкладки
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(width = 62.dp, height = 62.dp)
+                            .clip(RoundedCornerShape(15.dp))
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ){}
+                    // Кнопка возврата к спискам (по центру)
+                    Box(
+                        modifier = Modifier
+                            .size(width = 62.dp, height = 62.dp)
+                            .clip(RoundedCornerShape(15.dp))
+                            .background(Color.Transparent)
+                            .clickable { onBackClick() }
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Назад к спискам",
+                                tint = textColor.copy(alpha = 0.6f),
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Text(
+                                text = "Списки",
+                                fontSize = 12.sp,
+                                color = textColor.copy(alpha = 0.6f),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
             }
         }
     ) { paddingValues ->
@@ -503,7 +586,7 @@ fun TasksScreen(
                     }
                 },
                 trailingContent = {
-                    IconButton(onClick = { 
+                    IconButton(onClick = {
                         if (isAddingNewTask) {
                             if (newTaskTitle.text.isNotBlank()) {
                                 viewModel.addNewTask(newTaskTitle.text)
@@ -526,9 +609,9 @@ fun TasksScreen(
                     containerColor = surfaceColor
                 )
             )
-            
+
             // Добавляем отступ
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Список задач
             LazyColumn(
@@ -537,24 +620,25 @@ fun TasksScreen(
                     TaskItem(
                         task = task,
                         onToggleCompletion = { viewModel.toggleTaskCompletion(task.id) },
-                        onEditClick = { 
+                        onEditClick = {
                             editingTaskId = task.id
                         },
                         onDeleteClick = { viewModel.deleteTask(task.id) },
                         editingId = editingTaskId,
-                        onSaveEdit = { newTitle -> 
+                        onSaveEdit = { newTitle ->
                             viewModel.updateTaskTitle(task.id, newTitle)
                             editingTaskId = null
                         },
                         onCancelEdit = { editingTaskId = null },
                         backgroundColor = surfaceColor,
                         textColor = textColor,
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        resetSwipeTrigger = resetSwipeTrigger
                     )
-                    
+
                     // Добавляем Spacer после каждого элемента, кроме последнего
                     if (index < goalList.tasks.size - 1) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
             }
@@ -573,27 +657,28 @@ fun TaskItem(
     onCancelEdit: () -> Unit,
     backgroundColor: Color,
     textColor: Color,
-    accentColor: Color
+    accentColor: Color,
+    resetSwipeTrigger: Long
 ) {
     val isEditing = task.id == editingId
-    var editedTitle by remember(editingId) { 
+    var editedTitle by remember(editingId) {
         mutableStateOf(
             TextFieldValue(
                 text = task.title,
                 selection = TextRange(task.title.length) // Курсор в конце текста
             )
-        ) 
+        )
     }
     val focusRequester = remember { FocusRequester() }
     val itemHeight = 60.dp  // Фиксированная высота для всех элементов
-    
+
     // Эффект для автоматического фокуса при редактировании
     LaunchedEffect(isEditing) {
         if (isEditing) {
             focusRequester.requestFocus()
         }
     }
-    
+
     if (isEditing) {
         // Режим редактирования - без свайпа
         ListItem(
@@ -634,7 +719,8 @@ fun TaskItem(
         SwipeToAction(
             onEdit = onEditClick,
             onDelete = onDeleteClick,
-            editIconTint = accentColor // Синий цвет для иконки редактирования
+            editIconTint = accentColor,
+            resetTrigger = resetSwipeTrigger
         ) {
             ListItem(
                 headlineContent = {
@@ -653,7 +739,9 @@ fun TaskItem(
                             .clickable(onClick = onToggleCompletion)
                             .border(
                                 width = 2.dp,
-                                color = if (task.isCompleted) accentColor else Color(0xFF00BCD4).copy(alpha = 0.7f),
+                                color = if (task.isCompleted) accentColor else Color(0xFF00BCD4).copy(
+                                    alpha = 0.7f
+                                ),
                                 shape = CircleShape
                             )
                             .padding(2.dp),
