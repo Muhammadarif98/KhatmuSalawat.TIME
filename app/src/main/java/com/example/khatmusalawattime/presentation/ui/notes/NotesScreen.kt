@@ -1,5 +1,7 @@
 package com.example.khatmusalawattime.presentation.ui.notes
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -55,6 +59,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,6 +68,7 @@ import com.example.khatmusalawattime.R
 import com.example.khatmusalawattime.domain.model.GoalList
 import com.example.khatmusalawattime.domain.model.Task
 import com.example.khatmusalawattime.presentation.theme.BlueAccent
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -254,7 +260,7 @@ fun NotesScreen(
                             )
                         }
                     },
-                    modifier = Modifier.height(60.dp),
+                    modifier = Modifier.height(70.dp),
                     colors = ListItemDefaults.colors(containerColor = surfaceColor)
                 )
 
@@ -333,7 +339,9 @@ fun GoalListItem(
         )
     }
     val focusRequester = remember { FocusRequester() }
-    val itemHeight = 60.dp  // Фиксированная высота для всех элементов
+    
+    // Устанавливаем минимальную высоту 70dp
+    val minHeight = 70.dp  
 
     // Эффект для автоматического фокуса при редактировании
     LaunchedEffect(isEditing) {
@@ -374,7 +382,7 @@ fun GoalListItem(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(itemHeight),  // Добавляем фиксированную высоту
+                .defaultMinSize(minHeight = minHeight),  // Используем минимальную высоту вместо фиксированной
             colors = ListItemDefaults.colors(containerColor = backgroundColor)
         )
     } else {
@@ -408,7 +416,7 @@ fun GoalListItem(
                 modifier = Modifier
                     .clickable(onClick = onItemClick)
                     .fillMaxWidth()
-                    .height(itemHeight),  // Добавляем фиксированную высоту
+                    .defaultMinSize(minHeight = minHeight),  // Используем минимальную высоту вместо фиксированной
                 colors = ListItemDefaults.colors(containerColor = backgroundColor)
             )
         }
@@ -604,10 +612,8 @@ fun TasksScreen(
                         )
                     }
                 },
-                modifier = Modifier.height(60.dp),
-                colors = ListItemDefaults.colors(
-                    containerColor = surfaceColor
-                )
+                modifier = Modifier.height(70.dp),
+                colors = ListItemDefaults.colors(containerColor = surfaceColor)
             )
 
             // Добавляем отступ
@@ -633,6 +639,7 @@ fun TasksScreen(
                         backgroundColor = surfaceColor,
                         textColor = textColor,
                         accentColor = accentColor,
+                        itemHeight = 70.dp,
                         resetSwipeTrigger = resetSwipeTrigger
                     )
 
@@ -658,28 +665,59 @@ fun TaskItem(
     backgroundColor: Color,
     textColor: Color,
     accentColor: Color,
+    itemHeight: Dp = 70.dp,
     resetSwipeTrigger: Long
 ) {
-    val isEditing = task.id == editingId
-    var editedTitle by remember(editingId) {
+    // Состояние для редактирования
+    var editedTitle by remember(task.id) { 
         mutableStateOf(
             TextFieldValue(
                 text = task.title,
-                selection = TextRange(task.title.length) // Курсор в конце текста
+                selection = TextRange(task.title.length)
             )
-        )
+        ) 
     }
+    
+    // Состояние для анимации свечения после установки галочки
+    var showCompletionGlow by remember { mutableStateOf(false) }
+    
+    // Состояние для отслеживания предыдущего значения isCompleted
+    // Это предотвратит запуск эффекта при первой загрузке
+    var prevIsCompleted by remember { mutableStateOf(task.isCompleted) }
+    
+    // Анимируемое значение для эффекта свечения с более плавной анимацией
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (showCompletionGlow) 0.5f else 0f,
+        animationSpec = tween(
+            durationMillis = 1000, // Общая длительность анимации — 1 секунда
+            easing = { fraction ->
+                fraction * 2f // Линейное увеличение от 0 до 1
+            }
+        ),
+        label = "glow"
+    )
+    
+    // Эффект для отслеживания изменения состояния задачи и показа свечения
+    LaunchedEffect(task.isCompleted) {
+        // Проверяем, было ли изменение состояния и не является ли это первой загрузкой
+        if (task.isCompleted != prevIsCompleted && task.isCompleted) {
+            showCompletionGlow = true
+            delay(1300) // Показываем свечение немного дольше для более заметного эффекта
+            showCompletionGlow = false
+        }
+        // Обновляем предыдущее состояние
+        prevIsCompleted = task.isCompleted
+    }
+    
     val focusRequester = remember { FocusRequester() }
-    val itemHeight = 60.dp  // Фиксированная высота для всех элементов
-
-    // Эффект для автоматического фокуса при редактировании
-    LaunchedEffect(isEditing) {
-        if (isEditing) {
+    
+    LaunchedEffect(editingId) {
+        if (editingId == task.id) {
             focusRequester.requestFocus()
         }
     }
-
-    if (isEditing) {
+    
+    if (editingId == task.id) {
         // Режим редактирования - без свайпа
         ListItem(
             headlineContent = {
@@ -711,7 +749,7 @@ fun TaskItem(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(itemHeight),  // Добавляем фиксированную высоту
+                .defaultMinSize(minHeight = itemHeight),
             colors = ListItemDefaults.colors(containerColor = backgroundColor)
         )
     } else {
@@ -722,46 +760,62 @@ fun TaskItem(
             editIconTint = accentColor,
             resetTrigger = resetSwipeTrigger
         ) {
-            ListItem(
-                headlineContent = {
-                    Text(
-                        text = task.title,
-                        color = if (task.isCompleted) textColor.copy(alpha = 0.5f) else textColor,
-                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                        style = TextStyle(fontSize = 16.sp)
-                    )
-                },
-                trailingContent = {
-                    // Круглый чекбокс
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable(onClick = onToggleCompletion)
-                            .border(
-                                width = 2.dp,
-                                color = if (task.isCompleted) accentColor else Color(0xFF00BCD4).copy(
-                                    alpha = 0.7f
+            Box(modifier = Modifier.fillMaxWidth()) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = task.title,
+                            color = if (task.isCompleted) textColor.copy(alpha = 0.5f) else textColor,
+                            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                            style = TextStyle(fontSize = 16.sp)
+                        )
+                    },
+                    trailingContent = {
+                        // Круглый чекбокс с эффектом свечения
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                // Эффект свечения вокруг галочки когда она только что установлена
+                                .drawBehind {
+                                    if (showCompletionGlow) {
+                                        drawCircle(
+                                            color = Color(0xFF00BCD4).copy(alpha = glowAlpha),
+                                            radius = size.width * 0.6f, // Уменьшаем радиус, чтобы он был примерно на 1dp больше размера круга
+                                            center = center
+                                        )
+                                    }
+                                }
+                                .clip(CircleShape)
+                                .background(
+                                    color = if (task.isCompleted) 
+                                        Color(0xFF00BCD4) 
+                                    else 
+                                        Color.Transparent
+                                )
+                                .border(
+                                    width = 2.dp,
+                                    color = Color(0xFF00BCD4).copy(alpha = 0.7f),
+                                    shape = CircleShape
                                 ),
-                                shape = CircleShape
-                            )
-                            .padding(2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (task.isCompleted) {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = "Выполнено",
-                                tint = Color(0xFF00BCD4),
-                                modifier = Modifier.size(18.dp)
-                            )
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (task.isCompleted) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = "Выполнено",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(itemHeight),  // Добавляем фиксированную высоту
-                colors = ListItemDefaults.colors(containerColor = backgroundColor)
-            )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .defaultMinSize(minHeight = itemHeight)
+                        .clickable(onClick = onToggleCompletion),  // Клик по всему элементу для изменения состояния
+                    colors = ListItemDefaults.colors(containerColor = backgroundColor)
+                )
+            }
         }
     }
 } 
