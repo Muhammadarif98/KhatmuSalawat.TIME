@@ -97,7 +97,7 @@ fun CounterScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             // Большое число счетчика
-            Text(
+    Text(
                 text = count.toString(),
                 style = TextStyle(
                     fontSize = 100.sp,

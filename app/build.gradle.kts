@@ -72,16 +72,19 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    //Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
+
+    //Hilt
     implementation(libs.hilt.android)
     kapt(libs.hilt.compiler)
     implementation( libs.androidx.hilt.navigation.compose)
 
     implementation ("androidx.work:work-runtime-ktx:2.10.0")
 
-    implementation ("androidx.navigation:navigation-compose:2.8.8")
+    implementation ("androidx.navigation:navigation-compose:2.8.9")
     // Decompose (навигация)
     implementation ("com.arkivanov.decompose:decompose:2.1.0")
     implementation ("com.arkivanov.decompose:extensions-compose-jetpack:2.1.0")
