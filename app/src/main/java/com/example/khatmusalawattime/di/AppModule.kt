@@ -5,10 +5,15 @@ import androidx.room.Room
 import com.example.khatmusalawattime.data.local.dao.CounterDao
 import com.example.khatmusalawattime.data.local.dao.NoteDao
 import com.example.khatmusalawattime.data.local.database.AppDatabase
+import com.example.khatmusalawattime.data.repository.CounterRepositoryImpl
 import com.example.khatmusalawattime.data.repository.NoteRepositoryImpl
 import com.example.khatmusalawattime.data.repository.ReminderRepositoryImpl
+import com.example.khatmusalawattime.domain.repository.CounterRepository
 import com.example.khatmusalawattime.domain.repository.NoteRepository
 import com.example.khatmusalawattime.domain.repository.ReminderRepository
+import com.example.khatmusalawattime.domain.usecase.counter.CounterUseCases
+import com.example.khatmusalawattime.domain.usecase.counter.GetCounterUseCase
+import com.example.khatmusalawattime.domain.usecase.counter.UpdateCounterUseCase
 import com.example.khatmusalawattime.domain.usecase.note.AddNoteListUseCase
 import com.example.khatmusalawattime.domain.usecase.note.AddNoteUseCase
 import com.example.khatmusalawattime.domain.usecase.note.DeleteNoteUseCase
@@ -37,9 +42,11 @@ object AppModule {
             context,
             AppDatabase::class.java,
             "khatmusalawat_db"
-        ).build()
+        )
+        .fallbackToDestructiveMigration()
+        .build()
     }
-
+    
     @Provides
     @Singleton
     fun provideCounterDao(database: AppDatabase): CounterDao {
@@ -51,12 +58,12 @@ object AppModule {
     fun provideNoteDao(database: AppDatabase): NoteDao {
         return database.noteDao()
     }
-
+    
     // Gson (для парсинга JSON)
     @Provides
     @Singleton
     fun provideGson(): Gson = Gson()
-
+    
     // Репозиторий для работы с данными о времени Салавата и Хатму
     @Provides
     @Singleton
@@ -68,9 +75,9 @@ object AppModule {
     // Репозиторий для работы с заметками
     @Provides
     @Singleton
-    fun provideNoteRepository(
-        noteDao: NoteDao
-    ): NoteRepository = NoteRepositoryImpl(noteDao)
+    fun provideNoteRepository(noteDao: NoteDao): NoteRepository {
+        return NoteRepositoryImpl(noteDao)
+    }
     
     // Use cases для заметок
     @Provides
@@ -84,6 +91,23 @@ object AppModule {
             updateNote = UpdateNoteUseCase(repository),
             deleteNote = DeleteNoteUseCase(repository),
             toggleNoteCompletion = ToggleNoteCompletionUseCase(repository)
+        )
+    }
+    
+    // Репозиторий для счетчика
+    @Provides
+    @Singleton
+    fun provideCounterRepository(counterDao: CounterDao): CounterRepository {
+        return CounterRepositoryImpl(counterDao)
+    }
+    
+    // Use cases для счетчика
+    @Provides
+    @Singleton
+    fun provideCounterUseCases(repository: CounterRepository): CounterUseCases {
+        return CounterUseCases(
+            getCounter = GetCounterUseCase(repository),
+            updateCounter = UpdateCounterUseCase(repository)
         )
     }
 }

@@ -130,7 +130,7 @@ fun CounterScreen(
                     )
                     .clip(RoundedCornerShape(24.dp))
                     .background(buttonBgColor)
-                    .clickable { viewModel.incrementCount() }
+                    .clickable { viewModel.increment() }
                     .padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -176,7 +176,7 @@ fun CounterScreen(
                 NavigationButton(
                     icon = Icons.Default.Refresh,
                     contentDescription = "Уменьшить",
-                    onClick = { viewModel.decrementCount() },
+                    onClick = { viewModel.decrement() },
                     bgColor = buttonBgColor,
                     iconTint = textColor,
                     withBorder = true
@@ -186,7 +186,7 @@ fun CounterScreen(
                 NavigationButton(
                     icon = "0",
                     contentDescription = "Сбросить",
-                    onClick = { viewModel.resetCount() },
+                    onClick = { viewModel.reset() },
                     bgColor = buttonBgColor,
                     iconTint = textColor
                 )

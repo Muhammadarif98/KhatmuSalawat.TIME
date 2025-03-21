@@ -34,7 +34,7 @@ fun BottomNavigationBar(
     // Цвета
     val bgColor = Color(0xFFF0E8C9)
     val textColor = Color(0xFF8B7E66)
-    
+
     Box(
         modifier = Modifier
             .fillMaxWidth()

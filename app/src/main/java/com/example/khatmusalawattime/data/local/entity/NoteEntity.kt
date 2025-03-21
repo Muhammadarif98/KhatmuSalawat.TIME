@@ -4,8 +4,8 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.example.khatmusalawattime.domain.model.Note
-import com.example.khatmusalawattime.domain.model.NoteList
+import com.example.khatmusalawattime.domain.model.GoalList
+import com.example.khatmusalawattime.domain.model.Task
 import java.util.Date
 
 @Entity(tableName = "note_lists")
@@ -13,28 +13,41 @@ data class NoteListEntity(
     @PrimaryKey
     val id: String,
     val title: String,
+    val isCompleted: Boolean,
+    val tasks: List<NoteEntity>,
     val createdAt: Long,
-    val updatedAt: Long,
-    val completed: Boolean
+    val updatedAt: Long
 ) {
-    fun toNoteList(): NoteList {
-        return NoteList(
+    fun toGoalList(tasks: List<Task>): GoalList {
+        return GoalList(
             id = id,
             title = title,
+            isCompleted = isCompleted,
+            tasks = tasks,
             createdAt = Date(createdAt),
-            updatedAt = Date(updatedAt),
-            completed = completed
+            updatedAt = Date(updatedAt)
         )
     }
     
     companion object {
-        fun fromNoteList(noteList: NoteList): NoteListEntity {
+        fun fromGoalList(goalList: GoalList): NoteListEntity {
             return NoteListEntity(
-                id = noteList.id,
-                title = noteList.title,
-                createdAt = noteList.createdAt.time,
-                updatedAt = noteList.updatedAt.time,
-                completed = noteList.completed
+                id = goalList.id,
+                title = goalList.title,
+                isCompleted = goalList.isCompleted,
+                tasks = goalList.tasks.map { task ->
+                    NoteEntity(
+                        id = task.id,
+                        noteListId = goalList.id,
+                        title = task.title,
+                        content = "",
+                        isCompleted = task.isCompleted,
+                        createdAt = task.createdAt.time,
+                        updatedAt = task.updatedAt.time
+                    )
+                },
+                createdAt = goalList.createdAt.time,
+                updatedAt = goalList.updatedAt.time
             )
         }
     }
@@ -58,33 +71,31 @@ data class NoteEntity(
     val noteListId: String,
     val title: String,
     val content: String,
+    val isCompleted: Boolean,
     val createdAt: Long,
-    val updatedAt: Long,
-    val completed: Boolean
+    val updatedAt: Long
 ) {
-    fun toNote(): Note {
-        return Note(
+    fun toTask(): Task {
+        return Task(
             id = id,
-            noteListId = noteListId,
             title = title,
-            content = content,
+            isCompleted = isCompleted,
             createdAt = Date(createdAt),
-            updatedAt = Date(updatedAt),
-            completed = completed
+            updatedAt = Date(updatedAt)
         )
     }
     
     companion object {
-        fun fromNote(note: Note): NoteEntity {
+        fun fromTask(task: Task, noteListId: String): NoteEntity {
             return NoteEntity(
-                id = note.id,
-                noteListId = note.noteListId,
-                title = note.title,
-                content = note.content,
-                createdAt = note.createdAt.time,
-                updatedAt = note.updatedAt.time,
-                completed = note.completed
+                id = task.id,
+                noteListId = noteListId,
+                title = task.title,
+                content = "",
+                isCompleted = task.isCompleted,
+                createdAt = task.createdAt.time,
+                updatedAt = task.updatedAt.time
             )
         }
     }
-} 
+}

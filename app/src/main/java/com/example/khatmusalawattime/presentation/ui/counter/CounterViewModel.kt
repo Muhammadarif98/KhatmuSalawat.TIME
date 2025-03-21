@@ -7,6 +7,7 @@ import android.util.Log
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.khatmusalawattime.domain.usecase.counter.CounterUseCases
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,8 @@ private const val TAG = "CounterViewModel"
 
 @HiltViewModel
 class CounterViewModel @Inject constructor(
-    private val application: Application
+    private val application: Application,
+    private val counterUseCases: CounterUseCases
 ) : AndroidViewModel(application) {
     
     // Значение счетчика
@@ -30,8 +32,15 @@ class CounterViewModel @Inject constructor(
     private var milestone100Player: MediaPlayer? = null
     
     init {
-        loadCount()
+        loadCounter()
         prepareMediaPlayers()
+    }
+    
+    private fun loadCounter() {
+        viewModelScope.launch {
+            val counter = counterUseCases.getCounter()
+            _count.value = counter.count
+        }
     }
     
     // Загрузка счетчика из SharedPreferences
@@ -83,32 +92,38 @@ class CounterViewModel @Inject constructor(
         }
     }
     
-    // Увеличение счетчика на 1
-    fun incrementCount() {
-        _count.value += 1
-        saveCount()
-        playClickSound()
-        
-        // Проверяем, достигнут ли рубеж кратный 100
-        if (_count.value % 100 == 0) {
-            playMilestoneSound()
+    fun increment() {
+        viewModelScope.launch {
+            val newCount = _count.value + 1
+            _count.value = newCount
+            counterUseCases.updateCounter(newCount)
+            saveCount()
+            playClickSound()
+            
+            // Проверяем, достигнут ли рубеж кратный 100
+            if (newCount % 100 == 0) {
+                playMilestoneSound()
+            }
         }
     }
     
-    // Уменьшение счетчика на 1
-    fun decrementCount() {
-        if (_count.value > 0) {
-            _count.value -= 1
+    fun decrement() {
+        viewModelScope.launch {
+            val newCount = (_count.value - 1).coerceAtLeast(0)
+            _count.value = newCount
+            counterUseCases.updateCounter(newCount)
             saveCount()
             playClickSound()
         }
     }
     
-    // Сброс счетчика
-    fun resetCount() {
-        _count.value = 0
-        saveCount()
-        playClickSound()
+    fun reset() {
+        viewModelScope.launch {
+            _count.value = 0
+            counterUseCases.updateCounter(0)
+            saveCount()
+            playClickSound()
+        }
     }
     
     // Воспроизведение звука клика
