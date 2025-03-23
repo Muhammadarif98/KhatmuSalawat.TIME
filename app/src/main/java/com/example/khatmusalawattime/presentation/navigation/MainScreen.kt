@@ -32,6 +32,12 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     
+    // Определяем, должна ли отображаться нижняя навигация
+    val shouldShowBottomNav = when (currentRoute) {
+        "alarm", "counter" -> false // Скрываем на экранах таймера и счетчика
+        else -> true // На всех остальных экранах показываем
+    }
+    
     // Используем Box вместо Scaffold для размещения контента и навигации
     Box(modifier = Modifier.fillMaxSize()) {
         // Основной контент занимает весь экран
@@ -40,16 +46,18 @@ fun MainScreen() {
             modifier = Modifier.fillMaxSize()
         )
         
-        // Навигационная панель поверх контента внизу экрана, без отступов
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-        ) {
-            BottomNavigationBar(
-                navController = navController,
-                currentRoute = currentRoute
-            )
+        // Навигационная панель отображается только если shouldShowBottomNav == true
+        if (shouldShowBottomNav) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+            ) {
+                BottomNavigationBar(
+                    navController = navController,
+                    currentRoute = currentRoute
+                )
+            }
         }
     }
 }
