@@ -26,8 +26,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.khatmusalawattime.R
+import com.example.khatmusalawattime.presentation.ui.components.CustomSwitch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,15 +121,9 @@ fun SettingsScreen(
                         icon = Icons.Default.Settings,
                         textColor = textColor,
                         trailingContent = {
-                            Switch(
+                            CustomSwitch(
                                 checked = isDarkMode,
-                                onCheckedChange = { isDarkMode = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = colorThemes[selectedColorTheme],
-                                    checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
-                                    uncheckedThumbColor = Color.Gray,
-                                    uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
-                                )
+                                onCheckedChange = { isDarkMode = it }
                             )
                         }
                     )
@@ -151,15 +144,9 @@ fun SettingsScreen(
                         icon = Icons.Default.Notifications,
                         textColor = textColor,
                         trailingContent = {
-                            Switch(
+                            CustomSwitch(
                                 checked = isNotificationsEnabled,
-                                onCheckedChange = { isNotificationsEnabled = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = colorThemes[selectedColorTheme],
-                                    checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
-                                    uncheckedThumbColor = Color.Gray,
-                                    uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
-                                )
+                                onCheckedChange = { isNotificationsEnabled = it }
                             )
                         }
                     )
@@ -171,15 +158,9 @@ fun SettingsScreen(
                             title = "Напоминание в 16:00",
                             textColor = textColor,
                             trailingContent = {
-                                Switch(
+                                CustomSwitch(
                                     checked = isDailyNotificationsEnabled,
-                                    onCheckedChange = { isDailyNotificationsEnabled = it },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = colorThemes[selectedColorTheme],
-                                        checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
-                                        uncheckedThumbColor = Color.Gray,
-                                        uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
-                                    )
+                                    onCheckedChange = { isDailyNotificationsEnabled = it }
                                 )
                             }
                         )
@@ -189,15 +170,9 @@ fun SettingsScreen(
                             title = "Уведомления таймера",
                             textColor = textColor,
                             trailingContent = {
-                                Switch(
+                                CustomSwitch(
                                     checked = isTimerNotificationsEnabled,
-                                    onCheckedChange = { isTimerNotificationsEnabled = it },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = colorThemes[selectedColorTheme],
-                                        checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
-                                        uncheckedThumbColor = Color.Gray,
-                                        uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
-                                    )
+                                    onCheckedChange = { isTimerNotificationsEnabled = it }
                                 )
                             }
                         )
