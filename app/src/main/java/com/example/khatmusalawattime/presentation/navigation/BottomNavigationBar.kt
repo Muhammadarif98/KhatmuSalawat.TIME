@@ -82,7 +82,7 @@ fun BottomNavigationBar(
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .width(1.5.dp)
-                                .background(Color(0xFF827868).copy(alpha = 0.3f))
+                                .background(Color(0xFF827868))
                         )
                     }
                 }
