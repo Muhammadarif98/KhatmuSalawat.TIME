@@ -21,6 +21,7 @@ import com.example.khatmusalawattime.presentation.notification.scheduleDailyNoti
 import com.example.khatmusalawattime.presentation.theme.KhatmuSalawatTIMETheme
 import com.example.khatmusalawattime.presentation.ui.home.HomeScreen
 import com.example.khatmusalawattime.presentation.ui.home.HomeViewModel
+import com.example.khatmusalawattime.presentation.ui.theme.AppWrapper
 import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.InputStream
@@ -52,16 +53,18 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KhatmuSalawatTIMETheme {
-                AppNavigation()
+                AppWrapper {
+                    AppNavigation()
 
-                // Получаем ViewModel
-                val viewModel: HomeViewModel = hiltViewModel()
+                    // Получаем ViewModel
+                    val viewModel: HomeViewModel = hiltViewModel()
 
-                // Планируем уведомление после загрузки данных
-                LaunchedEffect(Unit) {
-                    // Чтение данных из JSON
-                    val reminderData = readReminderDataFromJson(this@MainActivity)
-                    scheduleDailyNotification(this@MainActivity, reminderData, getCurrentDate())
+                    // Планируем уведомление после загрузки данных
+                    LaunchedEffect(Unit) {
+                        // Чтение данных из JSON
+                        val reminderData = readReminderDataFromJson(this@MainActivity)
+                        scheduleDailyNotification(this@MainActivity, reminderData, getCurrentDate())
+                    }
                 }
             }
         }

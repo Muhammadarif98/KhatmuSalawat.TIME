@@ -2,7 +2,6 @@ package com.example.khatmusalawattime.presentation.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,9 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,7 +23,9 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -35,12 +36,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,6 +49,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.khatmusalawattime.R
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController = rememberNavController()
@@ -61,9 +63,26 @@ fun SettingsScreen(
     
     // Цвета для UI
     val backgroundColor = Color(0xFFFAF7F2) // Почти белый фон с легким бежевым оттенком
-    val cardBackgroundColor = Color(0xFFEFD2AE) // Почти белый фон для карточек
     val textColor = Color(0xFF7C5F23)
-    val accentColor = Color(0xFF7C5F23)
+    
+    // Цвета для градиентной обводки
+    val borderGradient = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFF4DBAD),
+            Color(0xFFFDFBCC),
+            Color(0xFFF9EBBD),
+            Color(0xFFF4DBAD)
+        )
+    )
+    
+    // Цвета для градиентного фона карточек
+    val cardGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFFF1E4D1),
+            Color(0xFFFFFFFC),
+            Color(0xFFF1E4D1)
+        )
+    )
     
     // Доступные цветовые темы
     val colorThemes = listOf(
@@ -74,150 +93,67 @@ fun SettingsScreen(
         Color(0xFF03A9F4)  // Голубой
     )
     
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor)
+            .paint(
+                painter = painterResource(id = R.drawable.backsetting),
+                contentScale = ContentScale.FillBounds
+            )
+            .statusBarsPadding()
     ) {
+
+        // Контент настроек
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
                 .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            // Заголовок
-            Text(
-                text = "Приложение",
-                color = textColor,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-            )
-            
-            // Секция Приложение
-            SettingsGroup(
-                backgroundColor = cardBackgroundColor
-            ) {
-                // Тема
-                SettingsItem(
-                    title = "Тема",
-                    icon = Icons.Default.Settings,
-                    textColor = textColor,
-                    trailingContent = {
-                        Switch(
-                            checked = isDarkMode,
-                            onCheckedChange = { isDarkMode = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = colorThemes[selectedColorTheme],
-                                checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
-                                uncheckedThumbColor = Color.Gray,
-                                uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
-                            )
-                        )
-                    }
-                )
-                
-                // Цвета
-                SettingsItem(
-                    title = "Цвета",
-                    icon = Icons.Default.Settings,
-                    textColor = textColor,
-                    hasBottomContent = true,
-                    trailingContent = {}
-                )
-                
-                // Выбор цветовой темы
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+            // Секция темы
+            SettingsSection(title = "Приложение") {
+                SettingsGroup(
+                    backgroundGradient = cardGradient,
+                    borderGradient = borderGradient
                 ) {
-                    colorThemes.forEachIndexed { index, color ->
-                        ColorThemeItem(
-                            color = color,
-                            isSelected = index == selectedColorTheme,
-                            onClick = { selectedColorTheme = index }
-                        )
-                    }
-                }
-                
-                // Язык
-                SettingsItem(
-                    title = "Язык",
-                    icon = Icons.Default.Settings,
-                    textColor = textColor,
-                    trailingContent = {
-                        Column(
-                            horizontalAlignment = Alignment.End
-                        ) {
-                            Text(
-                                text = "Русский",
-                                color = textColor,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Russian",
-                                color = textColor.copy(alpha = 0.7f),
-                                fontSize = 12.sp
+                    // Тема
+                    SettingsItem(
+                        title = "Тема",
+                        icon = Icons.Default.Settings,
+                        textColor = textColor,
+                        trailingContent = {
+                            Switch(
+                                checked = isDarkMode,
+                                onCheckedChange = { isDarkMode = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = colorThemes[selectedColorTheme],
+                                    checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
+                                    uncheckedThumbColor = Color.Gray,
+                                    uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
+                                )
                             )
                         }
-                    }
-                )
-                
-                // Дополнительно
-                SettingsItem(
-                    title = "Дополнительно",
-                    icon = Icons.Default.Settings,
-                    textColor = textColor,
-                    trailingContent = {}
-                )
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(20.dp))
             
             // Секция Уведомления
-            Text(
-                text = "Уведомления",
-                color = textColor,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-            )
-            
-            SettingsGroup(
-                backgroundColor = cardBackgroundColor
-            ) {
-                // Общие уведомления
-                SettingsItem(
-                    title = "Включить уведомления",
-                    icon = Icons.Default.Notifications,
-                    textColor = textColor,
-                    trailingContent = {
-                        Switch(
-                            checked = isNotificationsEnabled,
-                            onCheckedChange = { isNotificationsEnabled = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = colorThemes[selectedColorTheme],
-                                checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
-                                uncheckedThumbColor = Color.Gray,
-                                uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
-                            )
-                        )
-                    }
-                )
-                
-                // Дополнительные настройки уведомлений отображаются только если основные включены
-                if (isNotificationsEnabled) {
-                    // Ежедневные уведомления
+            SettingsSection(title = "Уведомления") {
+                SettingsGroup(
+                    backgroundGradient = cardGradient,
+                    borderGradient = borderGradient
+                ) {
+                    // Общие уведомления
                     SettingsItem(
-                        title = "Напоминание в 16:00",
+                        title = "Включить уведомления",
+                        icon = Icons.Default.Notifications,
                         textColor = textColor,
                         trailingContent = {
                             Switch(
-                                checked = isDailyNotificationsEnabled,
-                                onCheckedChange = { isDailyNotificationsEnabled = it },
+                                checked = isNotificationsEnabled,
+                                onCheckedChange = { isNotificationsEnabled = it },
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = colorThemes[selectedColorTheme],
                                     checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
@@ -228,192 +164,152 @@ fun SettingsScreen(
                         }
                     )
                     
-                    // Уведомления таймера
-                    SettingsItem(
-                        title = "Уведомления таймера",
-                        textColor = textColor,
-                        trailingContent = {
-                            Switch(
-                                checked = isTimerNotificationsEnabled,
-                                onCheckedChange = { isTimerNotificationsEnabled = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = colorThemes[selectedColorTheme],
-                                    checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
-                                    uncheckedThumbColor = Color.Gray,
-                                    uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
+                    // Дополнительные настройки уведомлений отображаются только если основные включены
+                    if (isNotificationsEnabled) {
+                        // Ежедневные уведомления
+                        SettingsItem(
+                            title = "Напоминание в 16:00",
+                            textColor = textColor,
+                            trailingContent = {
+                                Switch(
+                                    checked = isDailyNotificationsEnabled,
+                                    onCheckedChange = { isDailyNotificationsEnabled = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = colorThemes[selectedColorTheme],
+                                        checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
+                                        uncheckedThumbColor = Color.Gray,
+                                        uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
+                                    )
                                 )
-                            )
-                        }
+                            }
+                        )
+                        
+                        // Уведомления таймера
+                        SettingsItem(
+                            title = "Уведомления таймера",
+                            textColor = textColor,
+                            trailingContent = {
+                                Switch(
+                                    checked = isTimerNotificationsEnabled,
+                                    onCheckedChange = { isTimerNotificationsEnabled = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = colorThemes[selectedColorTheme],
+                                        checkedTrackColor = colorThemes[selectedColorTheme].copy(alpha = 0.5f),
+                                        uncheckedThumbColor = Color.Gray,
+                                        uncheckedTrackColor = Color.Gray.copy(alpha = 0.3f)
+                                    )
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // Секция Разработка
+            SettingsSection(title = "Разработка") {
+                SettingsGroup(
+                    backgroundGradient = cardGradient,
+                    borderGradient = borderGradient
+                ) {
+                    // Исходный код
+                    SettingsItem(
+                        title = "Исходный код",
+                        textColor = textColor,
+                        leadingIcon = painterResource(id = R.drawable.ic_settings),
+                        trailingContent = {}
+                    )
+                    
+                    // Отслеживание проблем
+                    SettingsItem(
+                        title = "Отслеживание проблем",
+                        textColor = textColor,
+                        leadingIcon = painterResource(id = R.drawable.ic_notes),
+                        trailingContent = {}
                     )
                 }
             }
             
             Spacer(modifier = Modifier.height(20.dp))
             
-            // Секция Резервное копирование
-            Text(
-                text = "Резервное копирование",
-                color = textColor,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-            )
-            
-            SettingsGroup(
-                backgroundColor = cardBackgroundColor
-            ) {
-                // Сохранить
-                SettingsItem(
-                    title = "Сохранить",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_notes),
-                    trailingContent = {}
-                )
-                
-                // Загрузить
-                SettingsItem(
-                    title = "Загрузить",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_mosque),
-                    trailingContent = {}
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Секция Разработка
-            Text(
-                text = "Разработка",
-                color = textColor,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-            )
-            
-            SettingsGroup(
-                backgroundColor = cardBackgroundColor
-            ) {
-                // Исходный код
-                SettingsItem(
-                    title = "Исходный код",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_settings),
-                    trailingContent = {}
-                )
-                
-                // Отслеживание проблем
-                SettingsItem(
-                    title = "Отслеживание проблем",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_notes),
-                    trailingContent = {}
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Секция Другое
-            Text(
-                text = "Другое",
-                color = textColor,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-            )
-            
-            SettingsGroup(
-                backgroundColor = cardBackgroundColor
-            ) {
-                // Про приложение
-                SettingsItem(
-                    title = "Про Shkiper",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_settings),
-                    trailingContent = {}
-                )
-                
-                // Статистика
-                SettingsItem(
-                    title = "Статистика",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_mosque),
-                    trailingContent = {}
-                )
-                
-                // Вступление
-                SettingsItem(
-                    title = "Вступление",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_notes),
-                    trailingContent = {}
-                )
+            // Секция Другое - без статистики
+            SettingsSection(title = "Другое") {
+                SettingsGroup(
+                    backgroundGradient = cardGradient,
+                    borderGradient = borderGradient
+                ) {
+                    // Про приложение
+                    SettingsItem(
+                        title = "Про Shkiper",
+                        textColor = textColor,
+                        leadingIcon = painterResource(id = R.drawable.ic_settings),
+                        trailingContent = {}
+                    )
+                    
+                    // Вступление
+                    SettingsItem(
+                        title = "Вступление",
+                        textColor = textColor,
+                        leadingIcon = painterResource(id = R.drawable.ic_notes),
+                        trailingContent = {}
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(20.dp))
             
             // Секция Поддержать
-            Text(
-                text = "Поддержать",
-                color = textColor,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-            )
-            
-            SettingsGroup(
-                backgroundColor = cardBackgroundColor,
-                hasBorderColor = true,
-                borderColor = accentColor
-            ) {
-                // Оценить
-                SettingsItem(
-                    title = "Оценить Shkiper",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_settings),
-                    trailingContent = {}
-                )
-                
-                // Поддержка разработки
-                SettingsItem(
-                    title = "Поддержка разработки",
-                    textColor = textColor,
-                    leadingIcon = painterResource(id = R.drawable.ic_mosque),
-                    trailingContent = {}
-                )
+            SettingsSection(title = "Поддержать") {
+                SettingsGroup(
+                    backgroundGradient = cardGradient,
+                    borderGradient = borderGradient
+                ) {
+                    // Оценить
+                    SettingsItem(
+                        title = "Оценить Shkiper",
+                        textColor = textColor,
+                        leadingIcon = painterResource(id = R.drawable.ic_settings),
+                        trailingContent = {}
+                    )
+                    
+                    // Поддержка разработки
+                    SettingsItem(
+                        title = "Поддержка разработки",
+                        textColor = textColor,
+                        leadingIcon = painterResource(id = R.drawable.ic_mosque),
+                        trailingContent = {}
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(20.dp))
             
             // Информация
-            Text(
-                text = "Информация",
-                color = textColor,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
-            )
-            
-            SettingsGroup(
-                backgroundColor = cardBackgroundColor
-            ) {
-                Row(
-                    verticalAlignment = Alignment.Top,
-                    modifier = Modifier.padding(16.dp)
+            SettingsSection(title = "Информация") {
+                SettingsGroup(
+                    backgroundGradient = cardGradient,
+                    borderGradient = borderGradient
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = textColor,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Text(
-                        text = "Ваши данные хранятся исключительно на вашем устройстве. Удаление данных вашего приложения может привести к безвозвратной потере данных. Чтобы предотвратить это, не забудьте сохранить файл данных перед выполнением сброса.",
-                        color = textColor.copy(alpha = 0.8f),
-                        fontSize = 14.sp
-                    )
+                    Row(
+                        verticalAlignment = Alignment.Top,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = textColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Text(
+                            text = "Ваши данные хранятся исключительно на вашем устройстве. Удаление данных вашего приложения может привести к безвозвратной потере данных. Чтобы предотвратить это, не забудьте сохранить файл данных перед выполнением сброса.",
+                            color = textColor.copy(alpha = 0.8f),
+                            fontSize = 14.sp
+                        )
+                    }
                 }
             }
             
@@ -424,32 +320,31 @@ fun SettingsScreen(
 
 @Composable
 fun SettingsGroup(
-    backgroundColor: Color,
-    hasBorderColor: Boolean = false,
-    borderColor: Color = Color.Transparent,
+    backgroundGradient: Brush,
+    borderGradient: Brush,
     content: @Composable () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .then(
-                if (hasBorderColor) {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = borderColor,
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                } else {
-                    Modifier
-                }
+            .border(
+                width = 10.dp,
+                brush = borderGradient,
+                shape = RoundedCornerShape(35.dp)
             ),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+        shape = RoundedCornerShape(35.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(backgroundGradient)
         ) {
-            content()
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                content()
+            }
         }
     }
 }
@@ -522,65 +417,16 @@ fun SettingsItem(
 }
 
 @Composable
-fun SettingsSubItem(
-    title: String,
-    textColor: Color,
-    trailingContent: @Composable () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+fun SettingsSection(title: String, content: @Composable () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = title,
-            color = textColor,
-            fontSize = 14.sp
+            style = MaterialTheme.typography.titleLarge,
+            color = Color(0xFF7C5F23),
+            modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
         )
         
-        trailingContent()
-    }
-}
-
-@Composable
-fun ColorThemeItem(
-    color: Color,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(50.dp)
-            .clip(CircleShape)
-            .background(Color.White)
-            .padding(2.dp)
-            .clickable { onClick() }
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(CircleShape)
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            color,
-                            color.copy(alpha = 0.7f)
-                        )
-                    )
-                )
-        ) {
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .size(18.dp)
-                        .align(Alignment.Center)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                )
-            }
-        }
+        content()
     }
 }
 

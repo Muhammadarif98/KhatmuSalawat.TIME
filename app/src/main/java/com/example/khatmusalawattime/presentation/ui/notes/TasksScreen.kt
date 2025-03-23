@@ -89,7 +89,7 @@ fun TasksScreen(
             TopAppBar(
                 title = { Text(goalList.title, color = textColor) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { navController.navigate("notes") }) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Назад",
