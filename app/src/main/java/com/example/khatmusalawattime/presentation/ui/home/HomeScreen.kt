@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -30,7 +29,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.khatmusalawattime.R
-import com.example.khatmusalawattime.presentation.navigation.BottomNavigationBar
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -55,78 +53,67 @@ fun HomeScreen(
     // Состояние
     val reminderData by viewModel.reminderData.collectAsState()
     
-    Scaffold(
-        bottomBar = {
-            BottomNavigationBar(navController = navController, currentRoute = "home")
-        },
+    // Основной контейнер
+    Box(
         modifier = Modifier
+            .paint(
+                painter = painterResource(id = R.drawable.back),
+                contentScale = ContentScale.FillBounds
+            )
             .fillMaxSize()
-
-    ) { 
-        // Основной контейнер
+    ) {
+        // Информация о хатму/салавате - 50dp от верхнего края
         Box(
             modifier = Modifier
-                .paint(
-                    painter = painterResource(id = R.drawable.back),
-                    contentScale = ContentScale.FillBounds
-                )
-                .fillMaxSize()
-
-
+                .fillMaxWidth()
+                .padding(top = 130.dp, start = 16.dp, end = 16.dp),
+            contentAlignment = Alignment.TopCenter
         ) {
-            // Информация о хатму/салавате - 50dp от верхнего края
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 130.dp, start = 16.dp, end = 16.dp),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                // Текущая дата
-                val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("d MMMM"))
-                
-                // Определяем текст для отображения в зависимости от дня недели
-                val displayText = when (LocalDate.now().dayOfWeek) {
-                    DayOfWeek.THURSDAY -> "Салават: ${reminderData?.datesKhunzakhSalawat?.get(currentDate) ?: "Загрузка..."}"
-                    DayOfWeek.FRIDAY -> "Сегодня Шазалийский Хатму"
-                    else -> "Хатму: ${reminderData?.datesKhunzakhHatmu?.get(currentDate) ?: "Загрузка..."}"
-                }
-                
-                Text(
-                    text = displayText,
-                    style = MaterialTheme.typography.headlineMedium,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            // Текущая дата
+            val currentDate = LocalDate.now().format(DateTimeFormatter.ofPattern("d MMMM"))
+            
+            // Определяем текст для отображения в зависимости от дня недели
+            val displayText = when (LocalDate.now().dayOfWeek) {
+                DayOfWeek.THURSDAY -> "Салават: ${reminderData?.datesKhunzakhSalawat?.get(currentDate) ?: "Загрузка..."}"
+                DayOfWeek.FRIDAY -> "Сегодня Шазалийский Хатму"
+                else -> "Хатму: ${reminderData?.datesKhunzakhHatmu?.get(currentDate) ?: "Загрузка..."}"
             }
             
-            // Кнопки навигации - размещены по бокам внизу экрана
-            Box(
+            Text(
+                text = displayText,
+                style = MaterialTheme.typography.headlineMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        
+        // Кнопки навигации - размещены по бокам внизу экрана
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 100.dp, start = 16.dp, end = 16.dp)
+        ) {
+            // Кнопка таймера (слева)
+            Button(
+                onClick = onNavigateToAlarm,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 100.dp, start = 16.dp, end = 16.dp)
+                    .align(Alignment.BottomStart)
+                    .width(150.dp)
+                    .height(60.dp)
             ) {
-                // Кнопка таймера (слева)
-                Button(
-                    onClick = onNavigateToAlarm,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .width(150.dp)
-                        .height(60.dp)
-                ) {
-                    Text("Таймер", fontSize = 18.sp)
-                }
-                
-                // Кнопка счетчика (справа)
-                Button(
-                    onClick = onNavigateToCounter,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .width(150.dp)
-                        .height(60.dp)
-                ) {
-                    Text("Счетчик", fontSize = 18.sp)
-                }
+                Text("Таймер", fontSize = 18.sp)
+            }
+            
+            // Кнопка счетчика (справа)
+            Button(
+                onClick = onNavigateToCounter,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .width(150.dp)
+                    .height(60.dp)
+            ) {
+                Text("Счетчик", fontSize = 18.sp)
             }
         }
     }
