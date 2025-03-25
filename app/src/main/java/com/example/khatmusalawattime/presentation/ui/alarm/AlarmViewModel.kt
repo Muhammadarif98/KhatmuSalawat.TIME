@@ -34,7 +34,7 @@ class AlarmViewModel @Inject constructor(
     
     // Отображаемое время в минутах
     private val _selectedTime = MutableStateFlow(5L)
-    val selectedTime: StateFlow<Long> = _selectedTime.asStateFlow()
+    open val selectedTime: StateFlow<Long> = _selectedTime.asStateFlow()
     
     // Наблюдаем за состоянием таймера из сервиса
     val timerState = TimerService.timerState

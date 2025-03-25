@@ -1,7 +1,10 @@
 package com.example.khatmusalawattime.presentation.ui.settings
 
+import android.content.Context
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -26,43 +27,87 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.paint
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.khatmusalawattime.R
+import com.example.khatmusalawattime.domain.model.ReminderData
+import com.example.khatmusalawattime.presentation.notification.cancelScheduledNotification
+import com.example.khatmusalawattime.presentation.notification.scheduleDailyNotification
 import com.example.khatmusalawattime.presentation.ui.components.CustomSwitch
+import com.example.khatmusalawattime.presentation.ui.components.settings.SettingsGroup
+import com.example.khatmusalawattime.presentation.ui.components.settings.SettingsItem
+import com.example.khatmusalawattime.presentation.ui.components.settings.SettingsPreferences
+import com.example.khatmusalawattime.presentation.ui.components.settings.SettingsSection
+import com.example.khatmusalawattime.presentation.ui.components.settings.TimePickerDialog
+import com.google.gson.Gson
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+private const val PREFS_NAME = "SettingsPrefs"
+private const val REMINDER_TIME_KEY = "reminder_time"
+private const val NOTIFICATIONS_ENABLED_KEY = "notifications_enabled"
+private const val DAILY_REMINDER_ENABLED_KEY = "daily_reminder_enabled"
+private const val TIMER_NOTIFICATION_ENABLED_KEY = "timer_notification_enabled"
+private const val DARK_MODE_ENABLED_KEY = "dark_mode_enabled"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-    navController: NavController = rememberNavController()
-) {
-    // Состояния для настроек
-    var isDarkMode by remember { mutableStateOf(false) }
-    var selectedColorTheme by remember { mutableStateOf(0) } // 0 - коричневый, 1 - синий, 2 - красный, 3 - оранжевый, 4 - голубой
-    var isNotificationsEnabled by remember { mutableStateOf(true) }
-    var isTimerNotificationsEnabled by remember { mutableStateOf(true) }
-    var isDailyNotificationsEnabled by remember { mutableStateOf(true) }
+fun SettingsScreen(navController: NavController) {
+    val context = LocalContext.current
+    val snackState = remember { SnackbarHostState() }
+    val snackScope = rememberCoroutineScope()
+    
+    // Состояние для TimePicker
+    var showCustomTimePicker by remember { mutableStateOf(false) }
+    var selectedHour by remember { mutableStateOf(16) }
+    var selectedMinute by remember { mutableStateOf(0) }
+    val formatter = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    
+    // Загружаем сохраненные настройки
+    var reminderTime by remember { mutableStateOf(SettingsPreferences.loadReminderTime(context)) }
+    var notificationsEnabled by remember { mutableStateOf(SettingsPreferences.loadNotificationsEnabled(context)) }
+    var dailyReminderEnabled by remember { mutableStateOf(SettingsPreferences.loadDailyReminderEnabled(context)) }
+    var timerNotificationEnabled by remember { mutableStateOf(SettingsPreferences.loadTimerNotificationEnabled(context)) }
+    var isDarkMode by remember { mutableStateOf(SettingsPreferences.loadDarkModeEnabled(context)) }
+    
+    // Разбираем сохраненное время
+    LaunchedEffect(Unit) {
+        val timeParts = reminderTime.split(":")
+        if (timeParts.size == 2) {
+            selectedHour = timeParts[0].toIntOrNull() ?: 16
+            selectedMinute = timeParts[1].toIntOrNull() ?: 0
+        }
+    }
     
     // Цвета для UI
-    val backgroundColor = Color(0xFFFAF7F2) // Почти белый фон с легким бежевым оттенком
+    val backgroundColor = Color(0xFFFAF7F2)
     val textColor = Color(0xFF7C5F23)
+    val accentColor = Color(0xFF827868)
     
     // Цвета для градиентной обводки
     val borderGradient = Brush.linearGradient(
@@ -82,97 +127,127 @@ fun SettingsScreen(
             Color(0xFFF1E4D1)
         )
     )
-    
-    // Доступные цветовые темы
-    val colorThemes = listOf(
-        Color(0xFF7C5F23), // Коричневый
-        Color(0xFF2979FF), // Синий
-        Color(0xFFE53935), // Красный
-        Color(0xFFFF9800), // Оранжевый
-        Color(0xFF03A9F4)  // Голубой
-    )
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .paint(
-                painter = painterResource(id = R.drawable.backsetting),
-                contentScale = ContentScale.FillBounds
-            )
-            .statusBarsPadding()
-    ) {
 
-        // Контент настроек
-        Column(
+    // Используем кастомный диалог выбора времени
+    TimePickerDialog(
+        showDialog = showCustomTimePicker,
+        onDismiss = { showCustomTimePicker = false },
+        selectedHour = selectedHour,
+        selectedMinute = selectedMinute,
+        onTimeSelected = { hour, minute ->
+            val cal = Calendar.getInstance()
+            cal.set(Calendar.HOUR_OF_DAY, hour)
+            cal.set(Calendar.MINUTE, minute)
+            cal.isLenient = false
+            
+            // Сохраняем выбранное время
+            val newTime = formatter.format(cal.time)
+            SettingsPreferences.saveReminderTime(context, newTime)
+            reminderTime = newTime
+            
+            // Перепланируем уведомление с новым временем
+            if (notificationsEnabled && dailyReminderEnabled) {
+                try {
+                    // Загружаем данные из JSON файла
+                    val jsonString = context.resources.openRawResource(R.raw.reminder_data)
+                        .bufferedReader()
+                        .use { it.readText() }
+                    
+                    // Парсим JSON в объект ReminderData
+                    val reminderData = Gson().fromJson(jsonString, ReminderData::class.java)
+                    
+                    val currentDate = SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date())
+                    
+                    // Планируем регулярное уведомление
+                    scheduleDailyNotification(context, reminderData, currentDate)
+                    
+                    snackScope.launch {
+                        snackState.showSnackbar("Время уведомлений установлено на $reminderTime")
+                    }
+                } catch (e: Exception) {
+                    snackScope.launch {
+                        snackState.showSnackbar("Ошибка: ${e.message}")
+                    }
+                }
+            } else {
+                snackScope.launch {
+                    snackState.showSnackbar("Время установлено на $newTime, но уведомления отключены")
+                }
+            }
+        },
+        textColor = textColor,
+        borderGradient = borderGradient,
+        cardGradient = cardGradient
+    )
+
+    // Обработчик сохранения настроек уведомлений
+    val saveNotificationSettings = { 
+        SettingsPreferences.saveNotificationSettings(
+            context, 
+            notificationsEnabled, 
+            dailyReminderEnabled, 
+            timerNotificationEnabled
+        )
+    }
+
+    // Обработчик сохранения настроек темы
+    val saveThemeSettings = {
+        SettingsPreferences.saveDarkModeEnabled(context, isDarkMode)
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Добавляем фоновое изображение
+        Image(
+            painter = painterResource(id = R.drawable.backsetting),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        
+        // Добавляем затемнение поверх изображения
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .background(Color.Black.copy(alpha = 0.3f))
+        )
+        
+        // Заголовок экрана
+        Text(
+            text = "Настройки",
+            style = MaterialTheme.typography.headlineMedium,
+            color = Color.White,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 30.dp)
+        )
+        
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 90.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
+                .padding(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Секция темы
-            SettingsSection(title = "Приложение") {
-                SettingsGroup(
-                    backgroundGradient = cardGradient,
-                    borderGradient = borderGradient
-                ) {
-                    // Тема
-                    SettingsItem(
-                        title = "Тема",
-                        icon = Icons.Default.Settings,
-                        textColor = textColor,
-                        trailingContent = {
-                            CustomSwitch(
-                                checked = isDarkMode,
-                                onCheckedChange = { isDarkMode = it }
-                            )
-                        }
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Секция Уведомления
-            SettingsSection(title = "Уведомления") {
-                SettingsGroup(
-                    backgroundGradient = cardGradient,
-                    borderGradient = borderGradient
-                ) {
-                    // Общие уведомления
-                    SettingsItem(
-                        title = "Включить уведомления",
-                        icon = Icons.Default.Notifications,
-                        textColor = textColor,
-                        trailingContent = {
-                            CustomSwitch(
-                                checked = isNotificationsEnabled,
-                                onCheckedChange = { isNotificationsEnabled = it }
-                            )
-                        }
-                    )
-                    
-                    // Дополнительные настройки уведомлений отображаются только если основные включены
-                    if (isNotificationsEnabled) {
-                        // Ежедневные уведомления
+            item {
+                SettingsSection(title = "Приложение") {
+                    SettingsGroup(
+                        backgroundGradient = cardGradient,
+                        borderGradient = borderGradient
+                    ) {
+                        // Тема
                         SettingsItem(
-                            title = "Напоминание в 16:00",
+                            title = "Тема",
+                            icon = Icons.Default.Settings,
                             textColor = textColor,
                             trailingContent = {
                                 CustomSwitch(
-                                    checked = isDailyNotificationsEnabled,
-                                    onCheckedChange = { isDailyNotificationsEnabled = it }
-                                )
-                            }
-                        )
-                        
-                        // Уведомления таймера
-                        SettingsItem(
-                            title = "Уведомления таймера",
-                            textColor = textColor,
-                            trailingContent = {
-                                CustomSwitch(
-                                    checked = isTimerNotificationsEnabled,
-                                    onCheckedChange = { isTimerNotificationsEnabled = it }
+                                    checked = isDarkMode,
+                                    onCheckedChange = { 
+                                        isDarkMode = it
+                                        saveThemeSettings()
+                                    }
                                 )
                             }
                         )
@@ -180,116 +255,265 @@ fun SettingsScreen(
                 }
             }
             
-            Spacer(modifier = Modifier.height(20.dp))
+            // Секция уведомлений
+            item {
+                SettingsSection(title = "Уведомления") {
+                    SettingsGroup(
+                        backgroundGradient = cardGradient,
+                        borderGradient = borderGradient
+                    ) {
+                        // Главный переключатель уведомлений
+                        SettingsItem(
+                            title = "Включить уведомления",
+                            icon = Icons.Default.Notifications,
+                            textColor = textColor,
+                            subtitle = "Получать уведомления о важных событиях",
+                            trailingContent = {
+                                CustomSwitch(
+                                    checked = notificationsEnabled,
+                                    onCheckedChange = { 
+                                        notificationsEnabled = it 
+                                        saveNotificationSettings()
+                                        
+                                        // Если уведомления отключены, отменяем запланированные уведомления
+                                        if (!it) {
+                                            cancelScheduledNotification(context)
+                                            snackScope.launch {
+                                                snackState.showSnackbar("Уведомления отключены")
+                                            }
+                                        } else if (dailyReminderEnabled) {
+                                            // Если уведомления включены и напоминания тоже включены, 
+                                            // планируем уведомление
+                                            try {
+                                                // Загружаем данные из JSON файла
+                                                val jsonString = context.resources.openRawResource(R.raw.reminder_data)
+                                                    .bufferedReader()
+                                                    .use { it.readText() }
+                                                
+                                                // Парсим JSON в объект ReminderData
+                                                val reminderData = Gson().fromJson(jsonString, ReminderData::class.java)
+                                                
+                                                val currentDate = SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date())
+                                                
+                                                // Планируем регулярное уведомление
+                                                scheduleDailyNotification(context, reminderData, currentDate)
+                                                
+                                                snackScope.launch {
+                                                    snackState.showSnackbar("Уведомления включены, ежедневное напоминание в $reminderTime")
+                                                }
+                                            } catch (e: Exception) {
+                                                snackScope.launch {
+                                                    snackState.showSnackbar("Ошибка: ${e.message}")
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                        
+                        // Ежедневное напоминание (активно только если включены уведомления)
+                        SettingsItem(
+                            title = "Ежедневное напоминание",
+                            icon = Icons.Default.Notifications,
+                            textColor = textColor,
+                            subtitle = "Установить время напоминания",
+                            modifier = Modifier.alpha(if (notificationsEnabled) 1f else 0.5f),
+                            trailingContent = {
+                                Column(
+                                    horizontalAlignment = Alignment.End
+                                ) {
+                                    CustomSwitch(
+                                        checked = dailyReminderEnabled && notificationsEnabled,
+                                        onCheckedChange = { 
+                                            if (notificationsEnabled) {
+                                                dailyReminderEnabled = it
+                                                saveNotificationSettings()
+                                                
+                                                // Если ежедневные напоминания отключены, отменяем запланированные уведомления
+                                                if (!it) {
+                                                    cancelScheduledNotification(context)
+                                                    snackScope.launch {
+                                                        snackState.showSnackbar("Ежедневные напоминания отключены")
+                                                    }
+                                                } else {
+                                                    // Если напоминания включены, планируем уведомление
+                                                    try {
+                                                        // Загружаем данные из JSON файла
+                                                        val jsonString = context.resources.openRawResource(R.raw.reminder_data)
+                                                            .bufferedReader()
+                                                            .use { it.readText() }
+                                                        
+                                                        // Парсим JSON в объект ReminderData
+                                                        val reminderData = Gson().fromJson(jsonString, ReminderData::class.java)
+                                                        
+                                                        val currentDate = SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date())
+                                                        
+                                                        // Планируем регулярное уведомление
+                                                        scheduleDailyNotification(context, reminderData, currentDate)
+                                                        
+                                                        snackScope.launch {
+                                                            snackState.showSnackbar("Уведомления включены, ежедневное напоминание в $reminderTime")
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        snackScope.launch {
+                                                            snackState.showSnackbar("Ошибка: ${e.message}")
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    )
+                                    
+                                    Text(
+                                        text = reminderTime,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = accentColor,
+                                        textAlign = TextAlign.End,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            },
+                            onClick = { 
+                                if (notificationsEnabled && dailyReminderEnabled) {
+                                    showCustomTimePicker = true
+                                }
+                            }
+                        )
+                        
+                        // Уведомления о таймере (активно только если включены уведомления)
+                        SettingsItem(
+                            title = "Уведомления о таймере",
+                            icon = Icons.Default.Notifications,
+                            textColor = textColor,
+                            subtitle = "Уведомлять о завершении таймера",
+                            modifier = Modifier.alpha(if (notificationsEnabled) 1f else 0.5f),
+                            trailingContent = {
+                                CustomSwitch(
+                                    checked = timerNotificationEnabled && notificationsEnabled,
+                                    onCheckedChange = { 
+                                        if (notificationsEnabled) {
+                                            timerNotificationEnabled = it
+                                            saveNotificationSettings()
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
+            }
             
             // Секция Разработка
-            SettingsSection(title = "Разработка") {
-                SettingsGroup(
-                    backgroundGradient = cardGradient,
-                    borderGradient = borderGradient
-                ) {
-                    // Исходный код
-                    SettingsItem(
-                        title = "Исходный код",
-                        textColor = textColor,
-                        leadingIcon = painterResource(id = R.drawable.ic_settings),
-                        trailingContent = {}
-                    )
-                    
-                    // Отслеживание проблем
-                    SettingsItem(
-                        title = "Отслеживание проблем",
-                        textColor = textColor,
-                        leadingIcon = painterResource(id = R.drawable.ic_notes),
-                        trailingContent = {}
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Секция Другое - без статистики
-            SettingsSection(title = "Другое") {
-                SettingsGroup(
-                    backgroundGradient = cardGradient,
-                    borderGradient = borderGradient
-                ) {
-                    // Про приложение
-                    SettingsItem(
-                        title = "Про Shkiper",
-                        textColor = textColor,
-                        leadingIcon = painterResource(id = R.drawable.ic_settings),
-                        trailingContent = {}
-                    )
-                    
-                    // Вступление
-                    SettingsItem(
-                        title = "Вступление",
-                        textColor = textColor,
-                        leadingIcon = painterResource(id = R.drawable.ic_notes),
-                        trailingContent = {}
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Секция Поддержать
-            SettingsSection(title = "Поддержать") {
-                SettingsGroup(
-                    backgroundGradient = cardGradient,
-                    borderGradient = borderGradient
-                ) {
-                    // Оценить
-                    SettingsItem(
-                        title = "Оценить Shkiper",
-                        textColor = textColor,
-                        leadingIcon = painterResource(id = R.drawable.ic_settings),
-                        trailingContent = {}
-                    )
-                    
-                    // Поддержка разработки
-                    SettingsItem(
-                        title = "Поддержка разработки",
-                        textColor = textColor,
-                        leadingIcon = painterResource(id = R.drawable.ic_mosque),
-                        trailingContent = {}
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            // Информация
-            SettingsSection(title = "Информация") {
-                SettingsGroup(
-                    backgroundGradient = cardGradient,
-                    borderGradient = borderGradient
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.Top,
-                        modifier = Modifier.padding(16.dp)
+            item {
+                SettingsSection(title = "Разработка") {
+                    SettingsGroup(
+                        backgroundGradient = cardGradient,
+                        borderGradient = borderGradient
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = textColor,
-                            modifier = Modifier.size(24.dp)
+                        // Исходный код
+                        SettingsItem(
+                            title = "Исходный код",
+                            textColor = textColor,
+                            leadingIcon = painterResource(id = R.drawable.ic_settings),
+                            trailingContent = {}
                         )
                         
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Text(
-                            text = "Ваши данные хранятся исключительно на вашем устройстве. Удаление данных вашего приложения может привести к безвозвратной потере данных. Чтобы предотвратить это, не забудьте сохранить файл данных перед выполнением сброса.",
-                            color = textColor.copy(alpha = 0.8f),
-                            fontSize = 14.sp
+                        // Отслеживание проблем
+                        SettingsItem(
+                            title = "Отслеживание проблем",
+                            textColor = textColor,
+                            leadingIcon = painterResource(id = R.drawable.ic_notes),
+                            trailingContent = {}
                         )
                     }
                 }
             }
             
-            Spacer(modifier = Modifier.height(80.dp)) // Для нижней навигации
+            // Секция Другое
+            item {
+                SettingsSection(title = "Другое") {
+                    SettingsGroup(
+                        backgroundGradient = cardGradient,
+                        borderGradient = borderGradient
+                    ) {
+                        // Про приложение
+                        SettingsItem(
+                            title = "Про Shkiper",
+                            textColor = textColor,
+                            leadingIcon = painterResource(id = R.drawable.ic_settings),
+                            trailingContent = {}
+                        )
+                        
+                        // Вступление
+                        SettingsItem(
+                            title = "Вступление",
+                            textColor = textColor,
+                            leadingIcon = painterResource(id = R.drawable.ic_notes),
+                            trailingContent = {}
+                        )
+                    }
+                }
+            }
+            
+            // Секция Поддержать
+            item {
+                SettingsSection(title = "Поддержать") {
+                    SettingsGroup(
+                        backgroundGradient = cardGradient,
+                        borderGradient = borderGradient
+                    ) {
+                        // Оценить
+                        SettingsItem(
+                            title = "Оценить Shkiper",
+                            textColor = textColor,
+                            leadingIcon = painterResource(id = R.drawable.ic_settings),
+                            trailingContent = {}
+                        )
+                        
+                        // Поддержка разработки
+                        SettingsItem(
+                            title = "Поддержка разработки",
+                            textColor = textColor,
+                            leadingIcon = painterResource(id = R.drawable.ic_mosque),
+                            trailingContent = {}
+                        )
+                    }
+                }
+            }
+            
+            // Информация
+            item {
+                SettingsSection(title = "Информация") {
+                    SettingsGroup(
+                        backgroundGradient = cardGradient,
+                        borderGradient = borderGradient
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.Top,
+                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 30.dp, end = 16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = textColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            Text(
+                                text = "Ваши данные хранятся исключительно на вашем устройстве. Удаление данных вашего приложения может привести к безвозвратной потере данных. Чтобы предотвратить это, не забудьте сохранить файл данных перед выполнением сброса.",
+                                color = textColor.copy(alpha = 0.8f),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
+
+        SnackbarHost(hostState = snackState)
     }
 }
 
@@ -308,7 +532,8 @@ fun SettingsGroup(
                 shape = RoundedCornerShape(35.dp)
             ),
         shape = RoundedCornerShape(35.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box(
             modifier = Modifier
@@ -325,17 +550,27 @@ fun SettingsGroup(
 }
 
 @Composable
-fun SettingsItem(
+fun SettingsItemLocal(
     title: String,
     textColor: Color,
     icon: ImageVector? = null,
     leadingIcon: Any? = null,
+    subtitle: String? = null,
     hasBottomContent: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
     trailingContent: @Composable () -> Unit
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .let { 
+                if (onClick != null) {
+                    it.clickable(onClick = onClick)
+                } else {
+                    it
+                }
+            }
     ) {
         Row(
             modifier = Modifier
@@ -344,38 +579,56 @@ fun SettingsItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.weight(2f)
             ) {
-                when {
-                    icon != null -> {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = textColor,
-                            modifier = Modifier.size(24.dp)
-                        )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    when {
+                        icon != null -> {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = textColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        leadingIcon != null && leadingIcon is Int -> {
+                            Icon(
+                                painter = painterResource(id = leadingIcon),
+                                contentDescription = null,
+                                tint = textColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
-                    leadingIcon != null && leadingIcon is Int -> {
-                        Icon(
-                            painter = painterResource(id = leadingIcon),
-                            contentDescription = null,
-                            tint = textColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Text(
+                        text = title,
+                        color = textColor,
+                        fontSize = 16.sp
+                    )
                 }
                 
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Text(
-                    text = title,
-                    color = textColor,
-                    fontSize = 16.sp
-                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        color = textColor.copy(alpha = 0.7f),
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(start = 40.dp, top = 4.dp)
+                    )
+                }
             }
             
-            trailingContent()
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                trailingContent()
+            }
         }
         
         if (!hasBottomContent) {
@@ -398,15 +651,72 @@ fun SettingsSection(title: String, content: @Composable () -> Unit) {
             text = title,
             style = MaterialTheme.typography.titleLarge,
             color = Color(0xFF7C5F23),
-            modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
+            modifier = Modifier
+                .padding(vertical = 16.dp, horizontal = 8.dp)
+                .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                .padding(8.dp)
         )
         
         content()
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun SettingsScreenPreview() {
-    SettingsScreen()
+private fun saveReminderTime(context: Context, time: String) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit {
+            putString(REMINDER_TIME_KEY, time)
+        }
+}
+
+private fun loadReminderTime(context: Context): String {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getString(REMINDER_TIME_KEY, "16:00") ?: "16:00"
+}
+
+private fun saveNotificationsEnabled(context: Context, enabled: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit {
+            putBoolean(NOTIFICATIONS_ENABLED_KEY, enabled)
+        }
+}
+
+private fun loadNotificationsEnabled(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(NOTIFICATIONS_ENABLED_KEY, true)
+}
+
+private fun saveDailyReminderEnabled(context: Context, enabled: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit {
+            putBoolean(DAILY_REMINDER_ENABLED_KEY, enabled)
+        }
+}
+
+private fun loadDailyReminderEnabled(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(DAILY_REMINDER_ENABLED_KEY, true)
+}
+
+private fun saveTimerNotificationEnabled(context: Context, enabled: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit {
+            putBoolean(TIMER_NOTIFICATION_ENABLED_KEY, enabled)
+        }
+}
+
+private fun loadTimerNotificationEnabled(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(TIMER_NOTIFICATION_ENABLED_KEY, true)
+}
+
+private fun saveDarkModeEnabled(context: Context, enabled: Boolean) {
+    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .edit {
+            putBoolean(DARK_MODE_ENABLED_KEY, enabled)
+        }
+}
+
+private fun loadDarkModeEnabled(context: Context): Boolean {
+    return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getBoolean(DARK_MODE_ENABLED_KEY, false)
 } 

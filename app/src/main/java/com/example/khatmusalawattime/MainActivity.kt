@@ -1,7 +1,9 @@
 package com.example.khatmusalawattime
 
 import android.Manifest
+import android.app.AlarmManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -48,8 +50,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Запрашиваем разрешение на уведомления
-        requestNotificationPermission()
+        // Запрашиваем разрешения при первом запуске
+        requestAllPermissions()
 
         setContent {
             KhatmuSalawatTIMETheme {
@@ -93,22 +95,27 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    private fun requestNotificationPermission() {
-        // Для Android 13 (API level 33) и выше требуется явное разрешение
+    private fun requestAllPermissions() {
+        // Запрашиваем разрешение на уведомления
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Проверяем наличие разрешения
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                // Запрашиваем разрешение, если оно не выдано
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                Log.d(TAG, "Разрешение на уведомления уже предоставлено")
+            val permission = Manifest.permission.POST_NOTIFICATIONS
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(permission)
             }
-        } else {
-            Log.d(TAG, "Для этой версии Android не требуется явное разрешение")
+        }
+        
+        // Запрашиваем разрешение на точные будильники для Android 12+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                    intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName)
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Ошибка при запросе разрешения на точные будильники: ${e.message}")
+                }
+            }
         }
     }
 }

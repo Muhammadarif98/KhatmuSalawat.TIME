@@ -64,6 +64,9 @@ fun AlarmScreen(
     // Colors
     val pageBgColor = Color(0xFFFFF2CC) // Светлый фоновый цвет страницы
     val deviceBgColor = Color(0xFFE8D8B1) // Цвет устройства как на изображении
+    val dBgColor = Color(0xFFD2BD85) // Цвет устройства как на изображении
+    val dBgColor2 = Color(0xFFEEE3C5) // Цвет устройства как на изображении
+    val dBgColor3 = Color(0xFFBCA586) // Цвет устройства как на изображении
     val textColor = Color(0xFF8B7E66)
     val accentColor = Color(0xFFD9CAA4)
     
@@ -104,33 +107,35 @@ fun AlarmScreen(
         // Основной контейнер с выравниванием по центру
         Box(
             modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.TopCenter
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.85f) // Ширина устройства - 85% экрана
-                    .padding(vertical = 20.dp),
+                    .fillMaxWidth() // Ширина устройства - 85% экрана
+                    .padding(vertical = 0.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Устройство таймера - коричневый островок
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(40.dp))
+                        .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 50.dp, bottomEnd = 50.dp))
                         .shadow(
                             elevation = 10.dp,
-                            shape = RoundedCornerShape(40.dp),
+                            shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 50.dp, bottomEnd = 50.dp),
                             spotColor = Color.Black.copy(alpha = 0.3f)
                         )
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    deviceBgColor.copy(alpha = 0.95f),
-                                    deviceBgColor
+                                    dBgColor,
+                                    dBgColor2,
+                                    dBgColor3
                                 )
                             )
                         )
-                        .padding(24.dp)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.TopCenter
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -138,6 +143,7 @@ fun AlarmScreen(
                         // Изображение пользователя с закругленными краями
                         Box(
                             modifier = Modifier
+                                .padding(top = 20.dp)
                                 .fillMaxWidth()
                                 .aspectRatio(16f / 11f)
                                 .clip(RoundedCornerShape(32.dp))
@@ -163,6 +169,7 @@ fun AlarmScreen(
                             // Показываем пользовательское изображение, если оно выбрано
                             userImageUri?.let { uri ->
                                 Image(
+
                                     painter = rememberAsyncImagePainter(
                                         model = uri,
                                         onError = {
@@ -209,23 +216,49 @@ fun AlarmScreen(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(2.dp)
-                                    .shadow(2.dp, RoundedCornerShape(1.dp))
-                                    .background(accentColor)
+                                    .height(8.dp)
+                                    .shadow(1.dp, RoundedCornerShape(50.dp))
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFFF4DBAD),
+                                            Color(0xFFFDFBCC),
+                                            Color(0xFFF9EBBD),
+                                            Color(0xFFF4DBAD),
+                                        )
+                                    ))
                             )
                             Box(
                                 modifier = Modifier
                                     .padding(horizontal = 8.dp)
-                                    .size(6.dp)
-                                    .shadow(2.dp, CircleShape)
-                                    .background(accentColor)
+                                    .size(8.dp)
+                                    .shadow(1.dp, CircleShape)
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFFF4DBAD),
+                                                Color(0xFFFDFBCC),
+                                                Color(0xFFF9EBBD),
+                                                Color(0xFFF4DBAD),
+                                            )
+                                        )
+                                    )
                             )
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(2.dp)
-                                    .shadow(2.dp, RoundedCornerShape(1.dp))
-                                    .background(accentColor)
+                                    .height(8.dp)
+                                    .shadow(1.dp, RoundedCornerShape(50.dp))
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFFF4DBAD),
+                                                Color(0xFFFDFBCC),
+                                                Color(0xFFF9EBBD),
+                                                Color(0xFFF4DBAD),
+                                            )
+                                        )
+                                    )
                             )
                         }
                         
@@ -265,7 +298,7 @@ fun AlarmScreen(
                             )
                             
                             // Большой текст секунд
-    Text(
+                            Text(
                                 text = seconds,
                                 style = TextStyle(
                                     fontSize = 100.sp,
@@ -286,23 +319,49 @@ fun AlarmScreen(
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(2.dp)
-                                    .shadow(2.dp, RoundedCornerShape(1.dp))
-                                    .background(accentColor)
+                                    .height(8.dp)
+                                    .shadow(1.dp, RoundedCornerShape(50.dp))
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFFF4DBAD),
+                                                Color(0xFFFDFBCC),
+                                                Color(0xFFF9EBBD),
+                                                Color(0xFFF4DBAD),
+                                            )
+                                        ))
                             )
                             Box(
                                 modifier = Modifier
                                     .padding(horizontal = 8.dp)
-                                    .size(6.dp)
-                                    .shadow(2.dp, CircleShape)
-                                    .background(accentColor)
+                                    .size(8.dp)
+                                    .shadow(1.dp, CircleShape)
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFFF4DBAD),
+                                                Color(0xFFFDFBCC),
+                                                Color(0xFFF9EBBD),
+                                                Color(0xFFF4DBAD),
+                                            )
+                                        )
+                                    )
                             )
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(2.dp)
-                                    .shadow(2.dp, RoundedCornerShape(1.dp))
-                                    .background(accentColor)
+                                    .height(8.dp)
+                                    .shadow(1.dp, RoundedCornerShape(50.dp))
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFFF4DBAD),
+                                                Color(0xFFFDFBCC),
+                                                Color(0xFFF9EBBD),
+                                                Color(0xFFF4DBAD),
+                                            )
+                                        )
+                                    )
                             )
                         }
                         
@@ -320,7 +379,7 @@ fun AlarmScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(64.dp))
                 
                 // Кнопки управления внизу экрана - как на изображении
                 Row(
@@ -491,8 +550,20 @@ fun TimeButton(
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showSystemUi = true)
 @Composable
 fun AlarmScreenPreview() {
-    AlarmScreen()
+    // Создаем фиктивную ViewModel для превью
+
+
+    // Создаем фиктивный NavController
+    val navController = rememberNavController()
+
+    // Оборачиваем в тему приложения (если есть)
+    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFFFF2CC)) {
+        AlarmScreen(
+            viewModel = hiltViewModel(),
+            navController = navController
+        )
+    }
 }

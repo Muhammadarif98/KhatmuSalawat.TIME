@@ -99,5 +99,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     
     // Accompanist Permissions
-    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    implementation("com.google.accompanist:accompanist-permissions:0.37.2")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.compose.material3:material3-window-size-class:1.3.1")
 }
