@@ -57,7 +57,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .paint(
-                painter = painterResource(id = R.drawable.back),
+                painter = painterResource(id = R.drawable.newback),
                 contentScale = ContentScale.FillBounds
             )
             .fillMaxSize()

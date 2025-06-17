@@ -102,4 +102,6 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.37.2")
     implementation("androidx.compose.material3:material3:1.1.2")
     implementation("androidx.compose.material3:material3-window-size-class:1.3.1")
+
+    implementation("com.wajahatkarim:flippable:1.5.4")
 }

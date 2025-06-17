@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,92 +13,61 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.example.khatmusalawattime.R
 
 @Composable
 fun CounterScreen(
     viewModel: CounterViewModel = hiltViewModel(),
     navController: NavController = rememberNavController()
 ) {
-    // Colors
-    val goldBgColor = Color(0xFFF2DFB8) // Золотистый фон с фото
-    val goldDarkerColor = Color(0xFFE8D8B1) // Более темный золотистый для кнопок
-    val textColor = Color(0xFFB3A379) // Цвет текста как на изображении
-    val buttonBgColor = Color(0xFFEBE3C9) // Светло-бежевый для кнопок
-    val dividerColor = Color(0xFFD4C9A8) // Цвет разделителей
-    
-    // State
+    val textColor = Color(0xFFFFFFFF) // Цвет текста
+    val buttonBgColor = Color(0xFFEBE3C9) // Цвет кнопок
     val count by viewModel.count.collectAsState()
-    
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = goldBgColor
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .paint(
+                painter = painterResource(id = R.drawable.counterback),
+                contentScale = ContentScale.Crop
+            )
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Верхняя часть с лампами
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Левая лампа
-                SmallLamp()
-                
-                // Центральная лампа больше
-                MainLamp()
-                
-                // Правая лампа
-                SmallLamp()
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Разделитель
-            Divider(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(2.dp),
-                color = dividerColor
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Большое число счетчика
-    Text(
+            Spacer(Modifier.height(360.dp))
+
+            Text(
                 text = count.toString(),
                 style = TextStyle(
                     fontSize = 100.sp,
@@ -106,55 +76,26 @@ fun CounterScreen(
                 ),
                 textAlign = TextAlign.Center
             )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Разделитель
-            Divider(
+
+            ClickableImageButton(
+                onClick = { viewModel.increment() },
                 modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(2.dp),
-                color = dividerColor
+                    .size(220.dp)
+                    .offset(x = -10.dp,)
+                ,
+                imageNormalRes = R.drawable.clickbtn,      // картинка для обычного состояния
+                imagePressedRes = R.drawable.clickpressedbtn, // картинка для нажатого состояния
+                contentDescription = "Увеличить счетчик"
             )
-            
-            Spacer(modifier = Modifier.height(40.dp))
-            
-            // Большая кнопка с иконкой пальца
-            Box(
-                modifier = Modifier
-                    .size(160.dp)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        spotColor = Color.Black.copy(alpha = 0.2f)
-                    )
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(buttonBgColor)
-                    .clickable { viewModel.increment() }
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = android.R.drawable.ic_menu_edit),
-                    contentDescription = "Увеличить счетчик",
-                    tint = textColor,
-                    modifier = Modifier.size(80.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // Нижняя панель с кнопками управления счетчиком
+
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp, vertical = 24.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                // Кнопка "назад"
-                NavigationButton(
-                    icon = Icons.Default.ArrowBack,
-                    contentDescription = "Назад",
+                StatefulImageButton(
                     onClick = {
                         try {
                             if (navController.previousBackStackEntry != null) {
@@ -168,27 +109,24 @@ fun CounterScreen(
                             navController.navigate("home")
                         }
                     },
-                    bgColor = buttonBgColor,
-                    iconTint = textColor
+                    imageNormalRes = R.drawable.countbackbtn,
+                    imagePressedRes = R.drawable.countbackpressedbtn,
+                    contentDescription = "Назад"
                 )
-                
-                // Кнопка уменьшения счетчика
-                NavigationButton(
-                    icon = Icons.Default.Refresh,
-                    contentDescription = "Уменьшить",
+
+                StatefulImageButton(
                     onClick = { viewModel.decrement() },
-                    bgColor = buttonBgColor,
-                    iconTint = textColor,
-                    withBorder = true
+                    imageNormalRes = R.drawable.countresetbtn,
+                    imagePressedRes = R.drawable.countresetpressedbtn,
+                    contentDescription = "Уменьшить"
                 )
-                
-                // Кнопка сброса (с иконкой "0")
-                NavigationButton(
-                    icon = "0",
-                    contentDescription = "Сбросить",
+
+                StatefulImageButton(
                     onClick = { viewModel.reset() },
-                    bgColor = buttonBgColor,
-                    iconTint = textColor
+                    modifier = Modifier.offset(x = 5.dp),
+                    imageNormalRes = R.drawable.countzerobtn,
+                    imagePressedRes = R.drawable.countzeropressedbtn,
+                    contentDescription = "Сбросить"
                 )
             }
         }
@@ -196,36 +134,65 @@ fun CounterScreen(
 }
 
 @Composable
-fun SmallLamp() {
-    Box(
-        modifier = Modifier
-            .size(60.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            painter = painterResource(id = android.R.drawable.ic_menu_gallery),
-            contentDescription = "Декоративная лампа",
-            modifier = Modifier.size(60.dp),
-            contentScale = ContentScale.Fit
-        )
-    }
+fun StatefulImageButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    imageNormalRes: Int,
+    imagePressedRes: Int,
+    contentDescription: String?
+) {
+    var pressed by remember { mutableStateOf(false) }
+
+    Image(
+        painter = painterResource(id = if (pressed) imagePressedRes else imageNormalRes),
+        contentDescription = contentDescription,
+        modifier = modifier
+            .size(90.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        pressed = true
+                        try {
+                            awaitRelease()
+                        } finally {
+                            pressed = false
+                        }
+                    },
+                    onTap = { onClick() }
+                )
+            }
+    )
+}
+@Composable
+fun ClickableImageButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    imageNormalRes: Int,
+    imagePressedRes: Int,
+    contentDescription: String?,
+) {
+    var pressed by remember { mutableStateOf(false) }
+
+    androidx.compose.foundation.Image(
+        painter = painterResource(id = if (pressed) imagePressedRes else imageNormalRes),
+        contentDescription = contentDescription,
+        modifier = modifier
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        pressed = true
+                        try {
+                            awaitRelease()
+                        } finally {
+                            pressed = false
+                        }
+                    },
+                    onTap = { onClick() }
+                )
+            }
+    )
 }
 
-@Composable
-fun MainLamp() {
-    Box(
-        modifier = Modifier
-            .size(90.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            painter = painterResource(id = android.R.drawable.ic_menu_gallery),
-            contentDescription = "Главная лампа",
-            modifier = Modifier.size(90.dp),
-            contentScale = ContentScale.Fit
-        )
-    }
-}
 
 @Composable
 fun NavigationButton(
@@ -268,7 +235,6 @@ fun NavigationButton(
                 )
             }
             is String -> {
-                // Для текстовой иконки "0"
                 Text(
                     text = icon,
                     color = iconTint,
@@ -278,10 +244,4 @@ fun NavigationButton(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun CounterScreenPreview() {
-    CounterScreen()
 }

@@ -3,13 +3,15 @@ package com.example.khatmusalawattime.presentation.ui.alarm
 import android.Manifest
 import android.net.Uri
 import android.os.Build
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,18 +21,25 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,10 +49,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -54,6 +62,9 @@ import com.example.khatmusalawattime.R
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.wajahatkarim.flippable.FlipAnimationType
+import com.wajahatkarim.flippable.Flippable
+import com.wajahatkarim.flippable.rememberFlipController
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -147,224 +158,92 @@ fun AlarmScreen(
                                 .fillMaxWidth()
                                 .aspectRatio(16f / 11f)
                                 .clip(RoundedCornerShape(32.dp))
-                                .background(
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color(0xFF75D9E8),
-                                            Color(0xFF3D98E8)
-                                        )
-                                    )
-                                )
                                 .clickable {
-                                    // Проверяем разрешение перед открытием галереи
                                     if (galleryPermissionState.status.isGranted) {
                                         galleryLauncher.launch("image/*")
                                     } else {
-                                        // Запрашиваем разрешение
                                         galleryPermissionState.launchPermissionRequest()
                                     }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            // Показываем пользовательское изображение, если оно выбрано
-                            userImageUri?.let { uri ->
-                                Image(
-
-                                    painter = rememberAsyncImagePainter(
-                                        model = uri,
-                                        onError = {
-                                            // В случае ошибки загрузки изображения, сбрасываем его
-                                            Log.e("AlarmScreen", "Ошибка загрузки изображения: ${it.result.throwable.message}")
-                                            viewModel.resetUserImage()
-                                        }
-                                    ),
-                                    contentDescription = "Пользовательское изображение",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
+                            when {
+                                userImageUri != null -> {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(
+                                            model = userImageUri,
+                                            onError = {
+                                                viewModel.resetUserImage()
+                                            }
+                                        ),
+                                        contentDescription = "Выбранное изображение",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                                else -> {
+                                    Image(
+                                        painter = painterResource(id = R.drawable.huzur),
+                                        contentDescription = "Изображение по умолчанию",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
                             }
-                            
-                            // Кнопка сброса изображения
-                            if (userImageUri != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(top = 8.dp, end = 8.dp)
-                                        .size(28.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.White.copy(alpha = 0.8f))
-                                        .clickable { viewModel.resetUserImage() }
-                                        .padding(4.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.Transparent,
+                                                Color.Black.copy(alpha = 0.3f)
+                                            ),
+                                            startY = 0f,
+                                            endY = Float.POSITIVE_INFINITY
+                                        )
+                                    )
+                            )
+
+                            when {
+                                userImageUri != null -> {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Сбросить изображение",
-                                        tint = Color.Black
+                                        contentDescription = "Удалить изображение",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(12.dp)
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.5f))
+                                            .padding(4.dp)
+                                            .clickable { viewModel.resetUserImage() }
+                                    )
+                                }
+                                else -> {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Добавить фото",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(12.dp)
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.5f))
+                                            .padding(4.dp)
                                     )
                                 }
                             }
                         }
                         
                         Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Горизонтальная линия - верхняя
-                        Row(
-                            modifier = Modifier.fillMaxWidth(0.8f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(8.dp)
-                                    .shadow(1.dp, RoundedCornerShape(50.dp))
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                        colors = listOf(
-                                            Color(0xFFF4DBAD),
-                                            Color(0xFFFDFBCC),
-                                            Color(0xFFF9EBBD),
-                                            Color(0xFFF4DBAD),
-                                        )
-                                    ))
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 8.dp)
-                                    .size(8.dp)
-                                    .shadow(1.dp, CircleShape)
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFFF4DBAD),
-                                                Color(0xFFFDFBCC),
-                                                Color(0xFFF9EBBD),
-                                                Color(0xFFF4DBAD),
-                                            )
-                                        )
-                                    )
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(8.dp)
-                                    .shadow(1.dp, RoundedCornerShape(50.dp))
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFFF4DBAD),
-                                                Color(0xFFFDFBCC),
-                                                Color(0xFFF9EBBD),
-                                                Color(0xFFF4DBAD),
-                                            )
-                                        )
-                                    )
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         // Время таймера - с большим 3D эффектом
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Получаем минуты и секунды из формата "MM:SS"
-                            val parts = formattedTime.split(":")
-                            val minutes = parts.getOrNull(0) ?: "00"
-                            val seconds = parts.getOrNull(1) ?: "00"
-                            
-                            // Большой текст минут
-                            Text(
-                                text = minutes,
-                                style = TextStyle(
-                                    fontSize = 100.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor
-                                ),
-                                modifier = Modifier.shadow(2.dp)
-                            )
-                            
-                            // Двоеточие
-                            Text(
-                                text = ":",
-                                style = TextStyle(
-                                    fontSize = 100.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor
-                                ),
-                                modifier = Modifier.shadow(2.dp)
-                            )
-                            
-                            // Большой текст секунд
-                            Text(
-                                text = seconds,
-                                style = TextStyle(
-                                    fontSize = 100.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor
-                                ),
-                                modifier = Modifier.shadow(2.dp)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Горизонтальная линия - нижняя
-                        Row(
-                            modifier = Modifier.fillMaxWidth(0.8f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(8.dp)
-                                    .shadow(1.dp, RoundedCornerShape(50.dp))
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFFF4DBAD),
-                                                Color(0xFFFDFBCC),
-                                                Color(0xFFF9EBBD),
-                                                Color(0xFFF4DBAD),
-                                            )
-                                        ))
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 8.dp)
-                                    .size(8.dp)
-                                    .shadow(1.dp, CircleShape)
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFFF4DBAD),
-                                                Color(0xFFFDFBCC),
-                                                Color(0xFFF9EBBD),
-                                                Color(0xFFF4DBAD),
-                                            )
-                                        )
-                                    )
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(8.dp)
-                                    .shadow(1.dp, RoundedCornerShape(50.dp))
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                            colors = listOf(
-                                                Color(0xFFF4DBAD),
-                                                Color(0xFFFDFBCC),
-                                                Color(0xFFF9EBBD),
-                                                Color(0xFFF4DBAD),
-                                            )
-                                        )
-                                    )
-                            )
-                        }
-                        
+                        FlipClockStyleTimer(formattedTime)
+
                         Spacer(modifier = Modifier.height(24.dp))
                         
                         // Кнопки выбора времени - как на изображении
@@ -372,14 +251,35 @@ fun AlarmScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
-                            TimeButton(time = 5, selectedTime = selectedTime.toInt(), onClick = { viewModel.selectTime(5) })
-                            TimeButton(time = 10, selectedTime = selectedTime.toInt(), onClick = { viewModel.selectTime(10) })
-                            TimeButton(time = 15, selectedTime = selectedTime.toInt(), onClick = { viewModel.selectTime(15) })
+                            TimeButton(
+                                time = 5,
+                                selectedTime = selectedTime.toInt(),
+                                releasedImage = R.drawable.five,          // Изображение для обычного состояния
+                                pressedImage = R.drawable.fivepressed,    // Изображение для нажатого/выбранного состояния
+                                onClick = { viewModel.selectTime(5) }
+                            )
+                            TimeButton(
+                                time = 10,
+                                selectedTime = selectedTime.toInt(),
+                                releasedImage = R.drawable.ten,
+                                pressedImage = R.drawable.tenpressed,
+                                onClick = { viewModel.selectTime(10) }
+                            )
+                            TimeButton(
+                                time = 15,
+                                selectedTime = selectedTime.toInt(),
+                                releasedImage = R.drawable.fifteen,
+                                pressedImage = R.drawable.fifteenpressed,
+                                onClick = { viewModel.selectTime(15) }
+                            )
+                            //TimeButton(time = 5, selectedTime = selectedTime.toInt(), onClick = { viewModel.selectTime(5) })
+                            //TimeButton(time = 10, selectedTime = selectedTime.toInt(), onClick = { viewModel.selectTime(10) })
+                            //TimeButton(time = 15, selectedTime = selectedTime.toInt(), onClick = { viewModel.selectTime(15) })
                         }
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(64.dp))
+                Spacer(modifier = Modifier.height(90.dp))
                 
                 // Кнопки управления внизу экрана - как на изображении
                 Row(
@@ -389,46 +289,28 @@ fun AlarmScreen(
                 ) {
                     // Кнопка назад
                     ControlButton(
-                        icon = R.drawable.ic_back,
+                        image = R.drawable.backbtn,
                         contentDescription = "Назад",
-                        onClick = { navController.navigateUp() }
+                        onClick = { navController.navigateUp() },
+                        size = 80.dp
                     )
-                    
-                    // Кнопка Play/Pause (больше других)
-                    Box(
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .border(
-                                width = 1.dp,
-                                color = textColor,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .clickable { viewModel.toggleTimerState() }
-                            .padding(12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        val iconRes = if (timerState is TimerState.Running) {
-                            R.drawable.ic_pause
-                        } else {
-                            R.drawable.ic_play
-                        }
-                        Icon(
-                            painter = painterResource(id = iconRes),
-                            contentDescription = if (timerState is TimerState.Running) "Пауза" else "Старт",
-                            tint = textColor,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                    
+
+                    // Кнопка Play/Pause
+                    ControlButton(
+                        image = if (timerState is TimerState.Running) R.drawable.pausebtn else R.drawable.playbtn,
+                        contentDescription = if (timerState is TimerState.Running) "Пауза" else "Старт",
+                        onClick = { viewModel.toggleTimerState() },
+                        size = 80.dp
+                    )
+
                     // Кнопка Reset
                     ControlButton(
-                        icon = R.drawable.ic_reset,
+                        image = R.drawable.resetbtn,
                         contentDescription = "Сброс",
-                        onClick = { viewModel.resetTimer() }
+                        onClick = { viewModel.resetTimer() },
+                        size = 80.dp
                     )
                 }
-                
                 // Кнопка переключения звука/вибрации
                 Box(
                     modifier = Modifier
@@ -452,33 +334,135 @@ fun AlarmScreen(
                         tint = textColor
                     )
                 }
-                
-                // Кнопка проверки звука (в правом верхнем углу устройства)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(top = 8.dp, end = 8.dp)
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(deviceBgColor.copy(alpha = 0.6f))
-                        .clickable { viewModel.testSound() }
-                        .padding(6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = android.R.drawable.ic_lock_silent_mode_off),
-                        contentDescription = "Проверить звук",
-                        tint = textColor
-                    )
-                }
             }
         }
     }
 }
-
 @Composable
 fun ControlButton(
-    icon: Int,
+    image: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+    size: Dp
+) {
+    Image(
+        painter = painterResource(id = image),
+        contentDescription = contentDescription,
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick),
+        contentScale = ContentScale.FillBounds
+    )
+}
+@Composable
+fun FlipClockStyleTimer(
+    formattedTime: String,
+    modifier: Modifier = Modifier
+) {
+    val parts = formattedTime.split(":")
+    val minutes = parts.getOrNull(0)?.padStart(2, '0') ?: "00"
+    val seconds = parts.getOrNull(1)?.padStart(2, '0') ?: "00"
+
+    val minTens = minutes[0].digitToInt()
+    val minOnes = minutes[1].digitToInt()
+    val secTens = seconds[0].digitToInt()
+    val secOnes = seconds[1].digitToInt()
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FlipDigitTile(minTens, "minTens")
+        Spacer(Modifier.width(0.dp))
+        FlipDigitTile(minOnes, "minOnes")
+        Spacer(Modifier.width(15.dp))
+        FlipDigitTile(secTens, "secTens")
+        Spacer(Modifier.width(0.dp))
+        FlipDigitTile(secOnes, "secOnes")
+    }
+}
+
+@Composable
+fun FlipDigitTile(
+    digit: Int,
+    key: String
+) {
+    var previousDigit by remember(key) { mutableStateOf(digit) }
+    var flipTrigger by remember(key) { mutableStateOf(0) }
+
+    LaunchedEffect(digit) {
+        if (digit != previousDigit) {
+            flipTrigger++
+            previousDigit = digit
+        }
+    }
+
+    FlippableTile(
+        value = digit.toString(),
+        trigger = flipTrigger
+    )
+}
+
+@Composable
+fun FlippableTile(
+    value: String,
+    trigger: Int
+) {
+    val controller = rememberFlipController()
+
+    LaunchedEffect(trigger) {
+        controller.flip()
+    }
+
+    Flippable(
+        frontSide = {
+            TimerTile(value)
+        },
+        backSide = {
+            TimerTile(value)
+        },
+        flipController = controller,
+        flipAnimationType = FlipAnimationType.VERTICAL_CLOCKWISE,
+        flipDurationMs = 400,
+        cameraDistance = 40f,
+        modifier = Modifier
+    )
+}
+
+@Composable
+fun TimerTile(
+    value: String
+) {
+    Box(
+        modifier = Modifier
+            .width(80.dp)
+            .height(120.dp)
+            .clip(RoundedCornerShape(20.dp))
+    ) {
+        // 1. Изображение доски (фон)
+        Image(
+            painter = painterResource(id = R.drawable.doska),
+            contentDescription = "Доска для цифры",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // 2. Цифра поверх доски
+        Text(
+            text = value,
+            fontSize = 85.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFFA58C6B), // Коричневый цвет
+            modifier = Modifier.align(Alignment.Center).offset(x = 3.dp,y= -3.dp)
+        )
+    }
+}
+/*
+@Composable
+fun ControlButton(
+    image: Int,
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -500,13 +484,65 @@ fun ControlButton(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            painter = painterResource(id = icon),
+            painter = painterResource(id = image),
             contentDescription = contentDescription,
             tint = textColor
         )
     }
 }
+*/
 
+
+
+
+// ... остальные импорты остаются без изменений
+
+@Composable
+fun TimeButton(
+    time: Int,
+    selectedTime: Int,
+    releasedImage: Int,
+    pressedImage: Int,
+    onClick: () -> Unit
+) {
+    val isSelected = time == selectedTime
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val imageRes = if (isPressed || isSelected) pressedImage else releasedImage
+
+    // Анимированное изменение тени
+    val elevation by animateDpAsState(
+        targetValue = if (isSelected) 16.dp else if (isPressed) 8.dp else 12.dp,
+        animationSpec = tween(durationMillis = 150)
+    )
+
+    Box(
+        modifier = Modifier
+            .size(86.dp)
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(16.dp),
+                clip = true,
+                ambientColor = Color.Black.copy(alpha = 0.4f),
+                spotColor = Color.Black.copy(alpha = 0.3f)
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(id = imageRes),
+            contentDescription = "$time минут",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
+    }
+}
+/*
 @Composable
 fun TimeButton(
     time: Int,
@@ -548,7 +584,7 @@ fun TimeButton(
             textAlign = TextAlign.Center
         )
     }
-}
+}*/
 
 @Preview(showSystemUi = true)
 @Composable
