@@ -87,7 +87,11 @@ fun TasksScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(goalList.title, color = textColor) },
+                title = { Text(
+                    goalList.title,
+                    color = textColor,
+                    fontSize = 30.sp,
+                ) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigate("notes") }) {
                         Icon(
@@ -140,7 +144,7 @@ fun TasksScreen(
                         Text(
                             "Новая задача",
                             color = textColor,
-                            style = TextStyle(fontSize = 16.sp),
+                            fontSize = 16.sp,
                             modifier = Modifier.clickable { viewModel.toggleAddingNewTask() }
                         )
                     }

@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +45,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -208,14 +208,15 @@ fun SettingsScreen(navController: NavController) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f))
+                .background(Color.Black.copy(alpha = 0.1f))
         )
         
         // Заголовок экрана
         Text(
             text = "Настройки",
-            style = MaterialTheme.typography.headlineMedium,
-            color = Color.White,
+            fontSize = 50.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF716550),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 30.dp)
@@ -224,37 +225,12 @@ fun SettingsScreen(navController: NavController) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 90.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
-                .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
+                .padding(top = 90.dp, start = 16.dp, end = 16.dp, bottom = 75.dp)
+                .background(Color.White.copy(alpha = 0f), RoundedCornerShape(20.dp))
                 .padding(horizontal = 12.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Секция темы
-            item {
-                SettingsSection(title = "Приложение") {
-                    SettingsGroup(
-                        backgroundGradient = cardGradient,
-                        borderGradient = borderGradient
-                    ) {
-                        // Тема
-                        SettingsItem(
-                            title = "Тема",
-                            icon = Icons.Default.Settings,
-                            textColor = textColor,
-                            trailingContent = {
-                                CustomSwitch(
-                                    checked = isDarkMode,
-                                    onCheckedChange = { 
-                                        isDarkMode = it
-                                        saveThemeSettings()
-                                    }
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-            
+
             // Секция уведомлений
             item {
                 SettingsSection(title = "Уведомления") {
@@ -262,56 +238,6 @@ fun SettingsScreen(navController: NavController) {
                         backgroundGradient = cardGradient,
                         borderGradient = borderGradient
                     ) {
-                        // Главный переключатель уведомлений
-                        SettingsItem(
-                            title = "Включить уведомления",
-                            icon = Icons.Default.Notifications,
-                            textColor = textColor,
-                            subtitle = "Получать уведомления о важных событиях",
-                            trailingContent = {
-                                CustomSwitch(
-                                    checked = notificationsEnabled,
-                                    onCheckedChange = { 
-                                        notificationsEnabled = it 
-                                        saveNotificationSettings()
-                                        
-                                        // Если уведомления отключены, отменяем запланированные уведомления
-                                        if (!it) {
-                                            cancelScheduledNotification(context)
-                                            snackScope.launch {
-                                                snackState.showSnackbar("Уведомления отключены")
-                                            }
-                                        } else if (dailyReminderEnabled) {
-                                            // Если уведомления включены и напоминания тоже включены, 
-                                            // планируем уведомление
-                                            try {
-                                                // Загружаем данные из JSON файла
-                                                val jsonString = context.resources.openRawResource(R.raw.reminder_data)
-                                                    .bufferedReader()
-                                                    .use { it.readText() }
-                                                
-                                                // Парсим JSON в объект ReminderData
-                                                val reminderData = Gson().fromJson(jsonString, ReminderData::class.java)
-                                                
-                                                val currentDate = SimpleDateFormat("d MMMM", Locale.getDefault()).format(Date())
-                                                
-                                                // Планируем регулярное уведомление
-                                                scheduleDailyNotification(context, reminderData, currentDate)
-                                                
-                                                snackScope.launch {
-                                                    snackState.showSnackbar("Уведомления включены, ежедневное напоминание в $reminderTime")
-                                                }
-                                            } catch (e: Exception) {
-                                                snackScope.launch {
-                                                    snackState.showSnackbar("Ошибка: ${e.message}")
-                                                }
-                                            }
-                                        }
-                                    }
-                                )
-                            }
-                        )
-                        
                         // Ежедневное напоминание (активно только если включены уведомления)
                         SettingsItem(
                             title = "Ежедневное напоминание",
@@ -367,7 +293,7 @@ fun SettingsScreen(navController: NavController) {
                                     
                                     Text(
                                         text = reminderTime,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.bodyLarge,
                                         color = accentColor,
                                         textAlign = TextAlign.End,
                                         modifier = Modifier.padding(top = 4.dp)
@@ -380,33 +306,14 @@ fun SettingsScreen(navController: NavController) {
                                 }
                             }
                         )
-                        
-                        // Уведомления о таймере (активно только если включены уведомления)
-                        SettingsItem(
-                            title = "Уведомления о таймере",
-                            icon = Icons.Default.Notifications,
-                            textColor = textColor,
-                            subtitle = "Уведомлять о завершении таймера",
-                            modifier = Modifier.alpha(if (notificationsEnabled) 1f else 0.5f),
-                            trailingContent = {
-                                CustomSwitch(
-                                    checked = timerNotificationEnabled && notificationsEnabled,
-                                    onCheckedChange = { 
-                                        if (notificationsEnabled) {
-                                            timerNotificationEnabled = it
-                                            saveNotificationSettings()
-                                        }
-                                    }
-                                )
-                            }
-                        )
                     }
                 }
             }
             
             // Секция Разработка
             item {
-                SettingsSection(title = "Разработка") {
+                SettingsSection(title = "Разработка",
+                    ) {
                     SettingsGroup(
                         backgroundGradient = cardGradient,
                         borderGradient = borderGradient
@@ -439,7 +346,7 @@ fun SettingsScreen(navController: NavController) {
                     ) {
                         // Про приложение
                         SettingsItem(
-                            title = "Про Shkiper",
+                            title = "Про приложение",
                             textColor = textColor,
                             leadingIcon = painterResource(id = R.drawable.ic_settings),
                             trailingContent = {}
@@ -465,7 +372,7 @@ fun SettingsScreen(navController: NavController) {
                     ) {
                         // Оценить
                         SettingsItem(
-                            title = "Оценить Shkiper",
+                            title = "Оценить приложение",
                             textColor = textColor,
                             leadingIcon = painterResource(id = R.drawable.ic_settings),
                             trailingContent = {}

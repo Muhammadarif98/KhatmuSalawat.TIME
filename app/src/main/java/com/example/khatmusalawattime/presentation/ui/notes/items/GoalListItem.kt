@@ -128,7 +128,7 @@ fun GoalListItem(
                             text = goalList.title,
                             color = if (goalList.isCompleted) textColor.copy(alpha = 0.5f) else textColor,
                             textDecoration = if (goalList.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                            style = TextStyle(fontSize = 16.sp),
+                            fontSize = 16.sp,
                             maxLines = Int.MAX_VALUE,
                             overflow = TextOverflow.Visible
                         )

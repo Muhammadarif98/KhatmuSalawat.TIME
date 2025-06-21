@@ -172,7 +172,7 @@ fun TaskItem(
                                 text = task.title,
                                 color = if (task.isCompleted) textColor.copy(alpha = 0.5f) else textColor,
                                 textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                                style = TextStyle(fontSize = 16.sp),
+                                fontSize = 16.sp,
                                 maxLines = Int.MAX_VALUE, // Разрешаем неограниченное число строк
                                 overflow = TextOverflow.Visible // Текст не будет обрезаться
                             )

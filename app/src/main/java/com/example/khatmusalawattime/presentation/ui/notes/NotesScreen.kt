@@ -91,7 +91,8 @@ fun NotesScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Цели", color = textColor) },
+                    title = { Text("Цели", fontSize = 30.sp,
+                        color = textColor) },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = backgroundColor
                     )
@@ -135,7 +136,7 @@ fun NotesScreen(
                             Text(
                                 "Новый список",
                                 color = textColor,
-                                style = TextStyle(fontSize = 16.sp),
+                                fontSize = 16.sp,
                                 modifier = Modifier.clickable { viewModel.toggleAddingNewList() }
                             )
                         }
