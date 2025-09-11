@@ -459,38 +459,7 @@ fun TimerTile(
         )
     }
 }
-/*
-@Composable
-fun ControlButton(
-    image: Int,
-    contentDescription: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val deviceBgColor = Color(0xFFE8D8B1)
-    val textColor = Color(0xFF8B7E66)
 
-    Box(
-        modifier = modifier
-            .size(50.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .border(
-                width = 1.dp,
-                color = textColor,
-                shape = RoundedCornerShape(8.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            painter = painterResource(id = image),
-            contentDescription = contentDescription,
-            tint = textColor
-        )
-    }
-}
-*/
 
 
 
@@ -542,6 +511,58 @@ fun TimeButton(
         )
     }
 }
+
+
+@Preview(showSystemUi = true)
+@Composable
+fun AlarmScreenPreview() {
+    // Создаем фиктивную ViewModel для превью
+
+
+    // Создаем фиктивный NavController
+    val navController = rememberNavController()
+
+    // Оборачиваем в тему приложения (если есть)
+    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFFFF2CC)) {
+        AlarmScreen(
+            viewModel = hiltViewModel(),
+            navController = navController
+        )
+    }
+}
+/*
+@Composable
+fun ControlButton(
+    image: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val deviceBgColor = Color(0xFFE8D8B1)
+    val textColor = Color(0xFF8B7E66)
+
+    Box(
+        modifier = modifier
+            .size(50.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .border(
+                width = 1.dp,
+                color = textColor,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(id = image),
+            contentDescription = contentDescription,
+            tint = textColor
+        )
+    }
+}
+*/
+
 /*
 @Composable
 fun TimeButton(
@@ -551,7 +572,7 @@ fun TimeButton(
 ) {
     val isSelected = time == selectedTime
     val textColor = Color(0xFF8B7E66)
-    
+
     // Градиентный фон с 3D эффектом для выбранной кнопки
     Box(
         modifier = Modifier
@@ -585,21 +606,3 @@ fun TimeButton(
         )
     }
 }*/
-
-@Preview(showSystemUi = true)
-@Composable
-fun AlarmScreenPreview() {
-    // Создаем фиктивную ViewModel для превью
-
-
-    // Создаем фиктивный NavController
-    val navController = rememberNavController()
-
-    // Оборачиваем в тему приложения (если есть)
-    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFFFF2CC)) {
-        AlarmScreen(
-            viewModel = hiltViewModel(),
-            navController = navController
-        )
-    }
-}

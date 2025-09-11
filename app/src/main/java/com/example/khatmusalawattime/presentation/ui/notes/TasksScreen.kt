@@ -177,6 +177,7 @@ fun TasksScreen(
 
             // Список задач
             LazyColumn(
+
             ) {
                 itemsIndexed(goalList.tasks) { index, task ->
                     TaskItem(
@@ -203,6 +204,10 @@ fun TasksScreen(
                     if (index < goalList.tasks.size - 1) {
                         Spacer(modifier = Modifier.height(4.dp))
                     }
+                }
+                // Добавляем дополнительный пустой элемент в конце списка
+                item {
+                    Spacer(modifier = Modifier.height(78.dp))
                 }
             }
         }

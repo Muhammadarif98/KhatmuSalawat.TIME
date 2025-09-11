@@ -195,6 +195,9 @@ fun NotesScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                         }
                     }
+                    item {
+                        Spacer(modifier = Modifier.height(78.dp))
+                    }
                 }
             }
         }
