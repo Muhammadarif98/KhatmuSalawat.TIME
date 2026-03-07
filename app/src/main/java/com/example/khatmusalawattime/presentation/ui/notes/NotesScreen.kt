@@ -44,14 +44,12 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.example.khatmusalawattime.presentation.theme.BlueAccent
 import com.example.khatmusalawattime.presentation.ui.notes.items.GoalListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(
-    navController: NavController,
     viewModel: NotesViewModel = hiltViewModel()
 ) {
     val goalLists by viewModel.goalLists.collectAsState()
@@ -211,8 +209,7 @@ fun NotesScreen(
                 backgroundColor = backgroundColor,
                 surfaceColor = surfaceColor,
                 textColor = textColor,
-                accentColor = accentColor,
-                navController = navController
+                accentColor = accentColor
             )
         }
     }

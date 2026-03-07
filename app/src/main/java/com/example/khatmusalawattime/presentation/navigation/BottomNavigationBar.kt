@@ -41,9 +41,9 @@ fun BottomNavigationBar(
     
     // Список экранов для навигации
     val screens = listOf(
-        NavItem("notes", R.drawable.ic_notes, "Заметки"),
-        NavItem("home", R.drawable.ic_mosque, "Главная"),
-        NavItem("settings", R.drawable.ic_settings, "Настройки")
+        NavItem(Route.Notes.path, R.drawable.ic_notes, "Заметки"),
+        NavItem(Route.Home.path, R.drawable.ic_mosque, "Главная"),
+        NavItem(Route.Settings.path, R.drawable.ic_settings, "Настройки")
     )
     
     Box(

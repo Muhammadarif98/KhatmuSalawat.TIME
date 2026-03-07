@@ -1,6 +1,8 @@
 package com.example.khatmusalawattime.presentation.ui.settings
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +33,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.khatmusalawattime.R
 import com.example.khatmusalawattime.domain.model.ReminderData
 import com.example.khatmusalawattime.presentation.notification.cancelScheduledNotification
@@ -77,10 +80,34 @@ private const val DARK_MODE_ENABLED_KEY = "dark_mode_enabled"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navController: NavController) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
     val context = LocalContext.current
     val snackState = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
+
+    // Бэкап
+    val backupMessage by viewModel.backupMessage.collectAsState()
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { viewModel.exportBackup(it) }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importBackup(it) }
+    }
+
+    LaunchedEffect(backupMessage) {
+        backupMessage?.let {
+            snackState.showSnackbar(it)
+            viewModel.clearMessage()
+        }
+    }
     
     // Состояние для TimePicker
     var showCustomTimePicker by remember { mutableStateOf(false) }
@@ -225,7 +252,7 @@ fun SettingsScreen(navController: NavController) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 90.dp, start = 16.dp, end = 16.dp, bottom = 75.dp)
+                .padding(top = 90.dp, start = 16.dp, end = 16.dp, bottom = 100.dp)
                 .background(Color.White.copy(alpha = 0f), RoundedCornerShape(20.dp))
                 .padding(horizontal = 12.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -389,6 +416,38 @@ fun SettingsScreen(navController: NavController) {
                 }
             }
             
+            // Секция Данные (бэкап/восстановление)
+            item {
+                SettingsSection(title = "Данные") {
+                    SettingsGroup(
+                        backgroundGradient = cardGradient,
+                        borderGradient = borderGradient
+                    ) {
+                        SettingsItem(
+                            title = "Сохранить данные",
+                            subtitle = "Экспорт в файл",
+                            textColor = textColor,
+                            leadingIcon = R.drawable.ic_upload,
+                            trailingContent = {},
+                            onClick = {
+                                exportLauncher.launch("khatmu_backup.json")
+                            }
+                        )
+
+                        SettingsItem(
+                            title = "Восстановить данные",
+                            subtitle = "Импорт из файла",
+                            textColor = textColor,
+                            leadingIcon = R.drawable.ic_download,
+                            trailingContent = {},
+                            onClick = {
+                                importLauncher.launch(arrayOf("application/json"))
+                            }
+                        )
+                    }
+                }
+            }
+
             // Информация
             item {
                 SettingsSection(title = "Информация") {

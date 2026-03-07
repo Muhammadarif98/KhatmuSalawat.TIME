@@ -49,14 +49,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.khatmusalawattime.R
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -70,7 +69,7 @@ import com.wajahatkarim.flippable.rememberFlipController
 @Composable
 fun AlarmScreen(
     viewModel: AlarmViewModel = hiltViewModel(),
-    navController: NavController = rememberNavController()
+    onNavigateBack: () -> Unit = {}
 ) {
     // Colors
     val pageBgColor = Color(0xFFFFF2CC) // Светлый фоновый цвет страницы
@@ -291,7 +290,7 @@ fun AlarmScreen(
                     ControlButton(
                         image = R.drawable.backbtn,
                         contentDescription = "Назад",
-                        onClick = { navController.navigateUp() },
+                        onClick = onNavigateBack,
                         size = 80.dp
                     )
 
@@ -453,9 +452,9 @@ fun TimerTile(
         Text(
             text = value,
             fontSize = 85.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFFA58C6B), // Коричневый цвет
-            modifier = Modifier.align(Alignment.Center).offset(x = 3.dp,y= -3.dp)
+            fontFamily = FontFamily(Font(R.font.russo_one_regular)),
+            color = Color(0xFFA58C6B),
+            modifier = Modifier.align(Alignment.Center).offset(x = 3.dp, y = -3.dp)
         )
     }
 }
@@ -516,17 +515,9 @@ fun TimeButton(
 @Preview(showSystemUi = true)
 @Composable
 fun AlarmScreenPreview() {
-    // Создаем фиктивную ViewModel для превью
-
-
-    // Создаем фиктивный NavController
-    val navController = rememberNavController()
-
-    // Оборачиваем в тему приложения (если есть)
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFFFF2CC)) {
         AlarmScreen(
-            viewModel = hiltViewModel(),
-            navController = navController
+            viewModel = hiltViewModel()
         )
     }
 }

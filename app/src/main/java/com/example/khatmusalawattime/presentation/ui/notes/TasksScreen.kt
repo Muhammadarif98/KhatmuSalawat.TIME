@@ -44,7 +44,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import com.example.khatmusalawattime.domain.model.GoalList
 import com.example.khatmusalawattime.presentation.ui.notes.items.TaskItem
 
@@ -57,8 +56,7 @@ fun TasksScreen(
     backgroundColor: Color,
     surfaceColor: Color,
     textColor: Color,
-    accentColor: Color,
-    navController: NavController
+    accentColor: Color
 ) {
     val isAddingNewTask by viewModel.isAddingNewTask.collectAsState()
     val resetSwipeTrigger by viewModel.resetSwipeAnimation.collectAsState()
@@ -93,7 +91,7 @@ fun TasksScreen(
                     fontSize = 30.sp,
                 ) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigate("notes") }) {
+                    IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Назад",

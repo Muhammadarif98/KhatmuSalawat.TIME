@@ -34,19 +34,19 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.example.khatmusalawattime.R
 
 @Composable
 fun CounterScreen(
     viewModel: CounterViewModel = hiltViewModel(),
-    navController: NavController = rememberNavController()
+    onNavigateBack: () -> Unit = {}
 ) {
     val textColor = Color(0xFFFFFFFF) // Цвет текста
     val buttonBgColor = Color(0xFFEBE3C9) // Цвет кнопок
@@ -65,12 +65,13 @@ fun CounterScreen(
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(360.dp))
+            Spacer(Modifier.height(371.dp))
 
             Text(
                 text = count.toString(),
                 style = TextStyle(
                     fontSize = 100.sp,
+                    fontFamily = FontFamily(Font(R.font.russo_one_regular)),
                     fontWeight = FontWeight.ExtraBold,
                     color = textColor
                 ),
@@ -96,19 +97,7 @@ fun CounterScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatefulImageButton(
-                    onClick = {
-                        try {
-                            if (navController.previousBackStackEntry != null) {
-                                navController.navigateUp()
-                            } else {
-                                navController.navigate("home") {
-                                    popUpTo("home") { inclusive = true }
-                                }
-                            }
-                        } catch (e: Exception) {
-                            navController.navigate("home")
-                        }
-                    },
+                    onClick = onNavigateBack,
                     imageNormalRes = R.drawable.countbackbtn,
                     imagePressedRes = R.drawable.countbackpressedbtn,
                     contentDescription = "Назад"

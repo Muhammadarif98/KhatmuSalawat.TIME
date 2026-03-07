@@ -2,6 +2,7 @@ package com.example.khatmusalawattime.di
 
 import android.content.Context
 import androidx.room.Room
+import com.example.khatmusalawattime.data.backup.BackupManager
 import com.example.khatmusalawattime.data.local.dao.CounterDao
 import com.example.khatmusalawattime.data.local.dao.NoteDao
 import com.example.khatmusalawattime.data.local.database.AppDatabase
@@ -109,5 +110,16 @@ object AppModule {
             getCounter = GetCounterUseCase(repository),
             updateCounter = UpdateCounterUseCase(repository)
         )
+    }
+
+    @Provides
+    @Singleton
+    fun provideBackupManager(
+        @ApplicationContext context: Context,
+        noteDao: NoteDao,
+        counterDao: CounterDao,
+        gson: Gson
+    ): BackupManager {
+        return BackupManager(context, noteDao, counterDao, gson)
     }
 }

@@ -5,6 +5,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,30 +28,28 @@ import com.example.khatmusalawattime.presentation.ui.settings.SettingsScreen
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
-    
+
     // Получаем текущий маршрут
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
+
     // Определяем, должна ли отображаться нижняя навигация
     val shouldShowBottomNav = when (currentRoute) {
-        "alarm", "counter" -> false // Скрываем на экранах таймера и счетчика
-        else -> true // На всех остальных экранах показываем
+        Route.Alarm.path, Route.Counter.path -> false
+        else -> true
     }
-    
-    // Используем Box вместо Scaffold для размещения контента и навигации
+
     Box(modifier = Modifier.fillMaxSize()) {
-        // Основной контент занимает весь экран
         NavigationHost(
             navController = navController,
             modifier = Modifier.fillMaxSize()
         )
-        
-        // Навигационная панель отображается только если shouldShowBottomNav == true
+
         if (shouldShowBottomNav) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .align(Alignment.BottomCenter)
             ) {
                 BottomNavigationBar(
@@ -70,36 +69,30 @@ fun NavigationHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = "home",
+        startDestination = Route.Home.path,
         modifier = modifier
     ) {
-        // Главный экран
-        composable("home") {
+        composable(Route.Home.path) {
             HomeScreen(
-                navController = navController,
-                onNavigateToAlarm = { navController.navigate("alarm") },
-                onNavigateToCounter = { navController.navigate("counter") }
+                onNavigateToAlarm = { navController.navigate(Route.Alarm.path) },
+                onNavigateToCounter = { navController.navigate(Route.Counter.path) }
             )
         }
-        
-        // Экран заметок
-        composable("notes") {
-            NotesScreen(navController = navController)
+
+        composable(Route.Notes.path) {
+            NotesScreen()
         }
-        
-        // Экран настроек
-        composable("settings") {
-            SettingsScreen(navController = navController)
+
+        composable(Route.Settings.path) {
+            SettingsScreen()
         }
-        
-        // Экран таймера (будильника)
-        composable("alarm") {
-            AlarmScreen(navController = navController)
+
+        composable(Route.Alarm.path) {
+            AlarmScreen(onNavigateBack = { navController.navigateUp() })
         }
-        
-        // Экран счетчика
-        composable("counter") {
-            CounterScreen(navController = navController)
+
+        composable(Route.Counter.path) {
+            CounterScreen(onNavigateBack = { navController.navigateUp() })
         }
     }
 } 

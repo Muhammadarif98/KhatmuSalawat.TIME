@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">KhatmuSalawat.TIME</string>
+    <string name="widget_description">Время Хатму и Салавата на сегодня</string>
+    <string name="widget_label">Хатму/Салават</string>
 </resources>
