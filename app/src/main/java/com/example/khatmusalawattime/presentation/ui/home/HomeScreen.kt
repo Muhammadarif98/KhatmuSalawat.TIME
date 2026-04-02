@@ -1,15 +1,20 @@
 package com.example.khatmusalawattime.presentation.ui.home
 
 import android.annotation.SuppressLint
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.os.Build
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +25,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +45,7 @@ import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -47,7 +56,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.khatmusalawattime.R
+import com.example.khatmusalawattime.domain.model.Location
 import com.example.khatmusalawattime.presentation.ui.components.AnimateContent
+import com.example.khatmusalawattime.presentation.widget.TimeWidgetProvider
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -70,7 +81,10 @@ fun HomeScreen(
     
     // Состояние
     val reminderData by viewModel.reminderData.collectAsState()
+    val currentLocation by viewModel.currentLocation.collectAsState()
     var showInfoDialog by remember { mutableStateOf(false) }
+    var locationExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     if (showInfoDialog) {
         InfoDialog(onDismiss = { showInfoDialog = false })
@@ -109,23 +123,178 @@ fun HomeScreen(
             AnimateContent(shortText = "$displayText", longText = " Сегодня $displayLongText")
         }
 
-        // Кнопка инфо
-        Box(
+        // Верхняя панель: кнопка виджета слева, dropdown локации и кнопка Info справа
+        Row(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 40.dp, end = 16.dp)
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(Color(0x40F1E4D1))
-                .clickable { showInfoDialog = true },
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .padding(top = 40.dp, start = 16.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Info,
-                contentDescription = "Информация",
-                tint = Color(0xFF604D2E),
-                modifier = Modifier.size(20.dp)
+            // Кнопка добавления виджета (слева)
+            val widgetBorderGradient = Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFFF4DBAD),
+                    Color(0xFFFDFBCC),
+                    Color(0xFFF4DBAD)
+                )
             )
+            val widgetTextColor = Color(0xFF604D2E)
+            val widgetBgColor = Color(0xFFF1E4D1)
+
+            Row(
+                modifier = Modifier
+                    .border(
+                        width = 2.dp,
+                        brush = widgetBorderGradient,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(widgetBgColor.copy(alpha = 0.85f))
+                    .clickable {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val appWidgetManager = AppWidgetManager.getInstance(context)
+                            val widgetProvider = ComponentName(context, TimeWidgetProvider::class.java)
+                            if (appWidgetManager.isRequestPinAppWidgetSupported) {
+                                appWidgetManager.requestPinAppWidget(widgetProvider, null, null)
+                            } else {
+                                Toast.makeText(context, "Ваш лаунчер не поддерживает добавление виджетов", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Добавьте виджет вручную через рабочий стол", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                    tint = widgetTextColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Виджет",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = FontFamily.Serif,
+                    color = widgetTextColor
+                )
+            }
+
+            // Правая группа: локация + инфо
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Dropdown выбора локации
+                Box {
+                    val borderGradient = Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFFF4DBAD),
+                            Color(0xFFFDFBCC),
+                            Color(0xFFF4DBAD)
+                        )
+                    )
+                    val textColor = Color(0xFF604D2E)
+                    val bgColor = Color(0xFFF1E4D1)
+
+                    Row(
+                        modifier = Modifier
+                            .border(
+                                width = 2.dp,
+                                brush = borderGradient,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(bgColor.copy(alpha = 0.85f))
+                            .clickable { locationExpanded = true }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = currentLocation.displayName,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = FontFamily.Serif,
+                            color = textColor
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Filled.ArrowDropDown,
+                            contentDescription = null,
+                            tint = textColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = locationExpanded,
+                        onDismissRequest = { locationExpanded = false },
+                        modifier = Modifier
+                            .border(
+                                width = 2.dp,
+                                brush = borderGradient,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(bgColor)
+                    ) {
+                        Location.entries.forEachIndexed { index, location ->
+                            val isSelected = location == currentLocation
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (isSelected) Modifier.background(Color(0x20604D2E))
+                                        else Modifier
+                                    )
+                                    .clickable {
+                                        viewModel.setLocation(location)
+                                        locationExpanded = false
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                            ) {
+                                Text(
+                                    text = location.displayName,
+                                    fontSize = 15.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    fontFamily = FontFamily.Serif,
+                                    color = textColor
+                                )
+                            }
+                            if (index < Location.entries.size - 1) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp)
+                                        .height(1.dp)
+                                        .background(borderGradient)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Кнопка инфо
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x40F1E4D1))
+                        .clickable { showInfoDialog = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = "Информация",
+                        tint = Color(0xFF604D2E),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
         }
 
         // Кнопки навигации - размещены по бокам внизу экрана
@@ -204,7 +373,7 @@ private fun InfoDialog(onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Приложение показывает время коллективного чтения Хатму и Салавата для жителей Хунзаха.\n\nВ четверг — время Салавата\nВ пятницу — Шазалийский Хатму\nВ остальные дни — время Хатму",
+                    text = "Приложение показывает время коллективного чтения Хатму и Салавата.\n\nВыберите локацию в верхнем меню:\n• Хунзах\n• Чиркей\n\nВ четверг — время Салавата\nВ пятницу — Шазалийский Хатму\nВ остальные дни — время Хатму",
                     fontSize = 15.sp,
                     fontFamily = FontFamily.Serif,
                     color = textColor,

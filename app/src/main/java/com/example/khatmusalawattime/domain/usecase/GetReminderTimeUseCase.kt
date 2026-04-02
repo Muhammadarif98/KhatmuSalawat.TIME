@@ -1,5 +1,6 @@
 package com.example.khatmusalawattime.domain.usecase
 
+import com.example.khatmusalawattime.domain.model.Location
 import com.example.khatmusalawattime.domain.model.ReminderData
 import com.example.khatmusalawattime.domain.repository.ReminderRepository
 import javax.inject.Inject
@@ -12,10 +13,11 @@ class GetReminderTimeUseCase @Inject constructor(
 ) {
 
     /**
-     * Получить данные о времени Салавата и Хатму.
+     * Получить данные о времени Салавата и Хатму для указанной локации.
+     * @param location Локация (Хунзах или Чиркей)
      * @return Объект ReminderData с данными из JSON.
      */
-    suspend operator fun invoke(): ReminderData {
-        return reminderRepository.getReminderData()
+    suspend operator fun invoke(location: Location = Location.KHUNZAKH): ReminderData {
+        return reminderRepository.getReminderData(location)
     }
 }

@@ -1,25 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Outer border with gradient -->
+    <!-- Outer border with gold gradient -->
     <item>
         <shape android:shape="rectangle">
             <gradient
-                android:startColor="#99F4DBAD"
-                android:centerColor="#99FDFBCC"
-                android:endColor="#99F4DBAD"
-                android:angle="270" />
-            <corners android:radius="28dp" />
+                android:startColor="#C9A227"
+                android:centerColor="#E8D48B"
+                android:endColor="#C9A227"
+                android:angle="135" />
+            <corners android:radius="24dp" />
         </shape>
     </item>
-    <!-- Inner background (semi-transparent) -->
+    <!-- Inner background with warm cream gradient -->
     <item
-        android:left="5dp"
-        android:top="5dp"
-        android:right="5dp"
-        android:bottom="5dp">
+        android:left="4dp"
+        android:top="4dp"
+        android:right="4dp"
+        android:bottom="4dp">
         <shape android:shape="rectangle">
-            <solid android:color="#99F1E4D1" />
-            <corners android:radius="24dp" />
+            <gradient
+                android:startColor="#F5E6C8"
+                android:centerColor="#FFFEF8"
+                android:endColor="#EDD9A8"
+                android:angle="135"
+                android:type="linear" />
+            <corners android:radius="20dp" />
         </shape>
     </item>
 </layer-list>

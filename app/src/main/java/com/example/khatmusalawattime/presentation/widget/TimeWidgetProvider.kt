@@ -3,6 +3,7 @@ package com.example.khatmusalawattime.presentation.widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -12,11 +13,15 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.util.TypedValue
 import android.widget.RemoteViews
+import android.widget.Toast
 import androidx.core.content.res.ResourcesCompat
 import com.example.khatmusalawattime.MainActivity
 import com.example.khatmusalawattime.R
+import com.example.khatmusalawattime.domain.model.Location
 import com.example.khatmusalawattime.domain.model.ReminderData
+import com.example.khatmusalawattime.presentation.ui.components.settings.SettingsPreferences
 import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -28,9 +33,29 @@ class TimeWidgetProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val knownWidgets = prefs.getStringSet(KEY_KNOWN_WIDGETS, emptySet()) ?: emptySet()
+        val knownWidgetIds = knownWidgets.mapNotNull { it.toIntOrNull() }.toSet()
+
         for (appWidgetId in appWidgetIds) {
+            // Показываем toast только для новых виджетов
+            if (appWidgetId !in knownWidgetIds) {
+                Toast.makeText(context, "Виджет добавлен", Toast.LENGTH_SHORT).show()
+                // Сохраняем ID нового виджета
+                val updatedWidgets = knownWidgets + appWidgetId.toString()
+                prefs.edit().putStringSet(KEY_KNOWN_WIDGETS, updatedWidgets).apply()
+            }
             updateWidget(context, appWidgetManager, appWidgetId)
         }
+    }
+
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        super.onDeleted(context, appWidgetIds)
+        // Удаляем ID виджетов из списка известных
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val knownWidgets = prefs.getStringSet(KEY_KNOWN_WIDGETS, emptySet()) ?: emptySet()
+        val updatedWidgets = knownWidgets - appWidgetIds.map { it.toString() }.toSet()
+        prefs.edit().putStringSet(KEY_KNOWN_WIDGETS, updatedWidgets).apply()
     }
 
     override fun onAppWidgetOptionsChanged(
@@ -42,7 +67,25 @@ class TimeWidgetProvider : AppWidgetProvider() {
         updateWidget(context, appWidgetManager, appWidgetId)
     }
 
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+    }
+
     companion object {
+        private const val PREFS_NAME = "widget_prefs"
+        private const val KEY_KNOWN_WIDGETS = "known_widget_ids"
+
+        /**
+         * Обновить все виджеты (вызывается при смене локации)
+         */
+        fun updateAllWidgets(context: Context) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val widgetComponent = ComponentName(context, TimeWidgetProvider::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(widgetComponent)
+            for (appWidgetId in appWidgetIds) {
+                updateWidget(context, appWidgetManager, appWidgetId)
+            }
+        }
 
         fun updateWidget(
             context: Context,
@@ -51,7 +94,9 @@ class TimeWidgetProvider : AppWidgetProvider() {
         ) {
             val views = RemoteViews(context.packageName, R.layout.widget_time)
 
-            val reminderData = loadReminderData(context)
+            // Читаем текущую локацию
+            val location = SettingsPreferences.loadLocation(context)
+            val reminderData = loadReminderData(context, location)
 
             val currentDate = LocalDate.now()
                 .format(DateTimeFormatter.ofPattern("d MMMM"))
@@ -137,12 +182,37 @@ class TimeWidgetProvider : AppWidgetProvider() {
             return bitmap
         }
 
-        private fun loadReminderData(context: Context): ReminderData? {
+        /**
+         * Модель для парсинга JSON Чиркей
+         */
+        private data class ChirkeiReminderData(
+            @SerializedName("datesChirkeySalawat")
+            val salawat: Map<String, String>,
+            @SerializedName("datesChirkeyHatmu")
+            val hatmu: Map<String, String>
+        )
+
+        private fun loadReminderData(context: Context, location: Location): ReminderData? {
             return try {
-                val jsonString = context.resources.openRawResource(R.raw.reminder_data)
-                    .bufferedReader()
-                    .use { it.readText() }
-                Gson().fromJson(jsonString, ReminderData::class.java)
+                when (location) {
+                    Location.KHUNZAKH -> {
+                        val jsonString = context.resources.openRawResource(R.raw.reminder_data)
+                            .bufferedReader()
+                            .use { it.readText() }
+                        Gson().fromJson(jsonString, ReminderData::class.java)
+                    }
+                    Location.CHIRKEI -> {
+                        val jsonString = context.resources.openRawResource(R.raw.reminder_data_chirkei)
+                            .bufferedReader()
+                            .use { it.readText() }
+                        val chirkeiData = Gson().fromJson(jsonString, ChirkeiReminderData::class.java)
+                        // Конвертируем в ReminderData для совместимости
+                        ReminderData(
+                            datesKhunzakhSalawat = chirkeiData.salawat,
+                            datesKhunzakhHatmu = chirkeiData.hatmu
+                        )
+                    }
+                }
             } catch (e: Exception) {
                 null
             }

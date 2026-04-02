@@ -1,5 +1,6 @@
 package com.example.khatmusalawattime.domain.repository
 
+import com.example.khatmusalawattime.domain.model.Location
 import com.example.khatmusalawattime.domain.model.ReminderData
 
 
@@ -9,8 +10,9 @@ import com.example.khatmusalawattime.domain.model.ReminderData
 interface ReminderRepository {
 
     /**
-     * Получить данные о времени Салавата и Хатму.
+     * Получить данные о времени Салавата и Хатму для указанной локации.
+     * @param location Локация (Хунзах или Чиркей)
      * @return Объект ReminderData с данными из JSON.
      */
-    suspend fun getReminderData(): ReminderData
+    suspend fun getReminderData(location: Location = Location.KHUNZAKH): ReminderData
 }

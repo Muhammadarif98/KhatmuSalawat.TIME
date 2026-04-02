@@ -1,6 +1,8 @@
 package com.example.khatmusalawattime.presentation.ui.settings
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -19,7 +21,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -42,16 +46,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.edit
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.khatmusalawattime.R
@@ -81,7 +88,8 @@ private const val DARK_MODE_ENABLED_KEY = "dark_mode_enabled"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel()
+    viewModel: SettingsViewModel = hiltViewModel(),
+    onNavigateToOnboarding: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val snackState = remember { SnackbarHostState() }
@@ -121,7 +129,8 @@ fun SettingsScreen(
     var dailyReminderEnabled by remember { mutableStateOf(SettingsPreferences.loadDailyReminderEnabled(context)) }
     var timerNotificationEnabled by remember { mutableStateOf(SettingsPreferences.loadTimerNotificationEnabled(context)) }
     var isDarkMode by remember { mutableStateOf(SettingsPreferences.loadDarkModeEnabled(context)) }
-    
+    var showAboutDialog by remember { mutableStateOf(false) }
+
     // Разбираем сохраненное время
     LaunchedEffect(Unit) {
         val timeParts = reminderTime.split(":")
@@ -206,6 +215,15 @@ fun SettingsScreen(
         borderGradient = borderGradient,
         cardGradient = cardGradient
     )
+
+    // Диалог "Про приложение"
+    if (showAboutDialog) {
+        AboutDialog(
+            onDismiss = { showAboutDialog = false },
+            textColor = textColor,
+            borderGradient = borderGradient
+        )
+    }
 
     // Обработчик сохранения настроек уведомлений
     val saveNotificationSettings = { 
@@ -350,6 +368,10 @@ fun SettingsScreen(
                             title = "Исходный код",
                             textColor = textColor,
                             leadingIcon = painterResource(id = R.drawable.ic_settings),
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Muhammadarif98/KhatmuSalawat.TIME"))
+                                context.startActivity(intent)
+                            },
                             trailingContent = {}
                         )
                         
@@ -358,6 +380,13 @@ fun SettingsScreen(
                             title = "Отслеживание проблем",
                             textColor = textColor,
                             leadingIcon = painterResource(id = R.drawable.ic_notes),
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:mrwildoswildos@gmail.com")
+                                    putExtra(Intent.EXTRA_SUBJECT, "Сообщение о проблеме - KhatmuSalawat.TIME")
+                                }
+                                context.startActivity(intent)
+                            },
                             trailingContent = {}
                         )
                     }
@@ -376,6 +405,7 @@ fun SettingsScreen(
                             title = "Про приложение",
                             textColor = textColor,
                             leadingIcon = painterResource(id = R.drawable.ic_settings),
+                            onClick = { showAboutDialog = true },
                             trailingContent = {}
                         )
                         
@@ -384,6 +414,10 @@ fun SettingsScreen(
                             title = "Вступление",
                             textColor = textColor,
                             leadingIcon = painterResource(id = R.drawable.ic_notes),
+                            onClick = {
+                                SettingsPreferences.resetOnboarding(context)
+                                onNavigateToOnboarding()
+                            },
                             trailingContent = {}
                         )
                     }
@@ -402,6 +436,10 @@ fun SettingsScreen(
                             title = "Оценить приложение",
                             textColor = textColor,
                             leadingIcon = painterResource(id = R.drawable.ic_settings),
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.rustore.ru/catalog/app/com.example.khatmusalawattime"))
+                                context.startActivity(intent)
+                            },
                             trailingContent = {}
                         )
                         
@@ -410,6 +448,13 @@ fun SettingsScreen(
                             title = "Поддержка разработки",
                             textColor = textColor,
                             leadingIcon = painterResource(id = R.drawable.ic_mosque),
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:mrwildoswildos@gmail.com")
+                                    putExtra(Intent.EXTRA_SUBJECT, "Поддержка разработки KhatmuSalawat.TIME")
+                                }
+                                context.startActivity(intent)
+                            },
                             trailingContent = {}
                         )
                     }
@@ -685,4 +730,233 @@ private fun saveDarkModeEnabled(context: Context, enabled: Boolean) {
 private fun loadDarkModeEnabled(context: Context): Boolean {
     return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         .getBoolean(DARK_MODE_ENABLED_KEY, false)
+}
+
+/**
+ * Диалог "Про приложение" с описанием функционала
+ */
+@Composable
+private fun AboutDialog(
+    onDismiss: () -> Unit,
+    textColor: Color,
+    borderGradient: Brush
+) {
+    val bgColor = Color(0xFFF1E4D1)
+    val accentColor = Color(0xFFB8956E)
+    val scrollState = rememberScrollState()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 4.dp,
+                    brush = borderGradient,
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .clip(RoundedCornerShape(28.dp))
+                .background(bgColor)
+                .padding(24.dp)
+        ) {
+            Column(
+                modifier = Modifier.verticalScroll(scrollState),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Заголовок
+                Text(
+                    text = "KhatmuSalawat.TIME",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Serif,
+                    color = textColor
+                )
+
+                Text(
+                    text = "Версия 1.0",
+                    fontSize = 14.sp,
+                    fontFamily = FontFamily.Serif,
+                    color = textColor.copy(alpha = 0.6f)
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Описание
+                AboutSectionTitle(text = "О приложении", textColor = textColor)
+                AboutText(
+                    text = "Приложение для отслеживания времени коллективного чтения Хатму и Салавата. Помогает мусульманам не пропустить важные духовные практики.",
+                    textColor = textColor
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Локации
+                AboutSectionTitle(text = "Локации", textColor = textColor)
+                AboutFeatureItem(
+                    icon = "📍",
+                    title = "Хунзах",
+                    description = "Расписание для жителей Хунзаха",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+                AboutFeatureItem(
+                    icon = "📍",
+                    title = "Чиркей",
+                    description = "Расписание для жителей Чиркея",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Расписание
+                AboutSectionTitle(text = "Расписание", textColor = textColor)
+                AboutFeatureItem(
+                    icon = "📖",
+                    title = "Четверг — Салават",
+                    description = "Время коллективного чтения Салавата",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+                AboutFeatureItem(
+                    icon = "🕌",
+                    title = "Пятница — Шазалийский Хатму",
+                    description = "Особое чтение по пятницам",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+                AboutFeatureItem(
+                    icon = "📿",
+                    title = "Остальные дни — Хатму",
+                    description = "Ежедневное время чтения Хатму",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Функции
+                AboutSectionTitle(text = "Функции", textColor = textColor)
+                AboutFeatureItem(
+                    icon = "⏰",
+                    title = "Таймер",
+                    description = "Таймер для отслеживания времени чтения",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+                AboutFeatureItem(
+                    icon = "🔢",
+                    title = "Счётчик",
+                    description = "Тасбих-счётчик с разными режимами",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+                AboutFeatureItem(
+                    icon = "📝",
+                    title = "Заметки",
+                    description = "Личные заметки и записи",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+                AboutFeatureItem(
+                    icon = "🔔",
+                    title = "Уведомления",
+                    description = "Напоминания о времени Хатму/Салавата",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+                AboutFeatureItem(
+                    icon = "💾",
+                    title = "Бэкап данных",
+                    description = "Сохранение и восстановление данных",
+                    textColor = textColor,
+                    accentColor = accentColor
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Кнопка закрытия
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0x33604D2E))
+                        .clickable { onDismiss() }
+                        .padding(horizontal = 32.dp, vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Закрыть",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Serif,
+                        color = textColor
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AboutSectionTitle(text: String, textColor: Color) {
+    Text(
+        text = text,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Bold,
+        fontFamily = FontFamily.Serif,
+        color = textColor,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+    )
+}
+
+@Composable
+private fun AboutText(text: String, textColor: Color) {
+    Text(
+        text = text,
+        fontSize = 14.sp,
+        fontFamily = FontFamily.Serif,
+        color = textColor,
+        lineHeight = 20.sp,
+        textAlign = TextAlign.Start,
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun AboutFeatureItem(
+    icon: String,
+    title: String,
+    description: String,
+    textColor: Color,
+    accentColor: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = icon,
+            fontSize = 18.sp,
+            modifier = Modifier.padding(end = 12.dp, top = 2.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = FontFamily.Serif,
+                color = textColor
+            )
+            Text(
+                text = description,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Serif,
+                color = textColor.copy(alpha = 0.7f),
+                lineHeight = 16.sp
+            )
+        }
+    }
 } 

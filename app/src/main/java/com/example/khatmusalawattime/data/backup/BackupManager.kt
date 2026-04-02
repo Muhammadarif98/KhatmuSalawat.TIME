@@ -43,7 +43,9 @@ data class BackupSettings(
     @SerializedName("notificationsEnabled") val notificationsEnabled: Boolean = true,
     @SerializedName("dailyReminderEnabled") val dailyReminderEnabled: Boolean = true,
     @SerializedName("timerNotificationEnabled") val timerNotificationEnabled: Boolean = true,
-    @SerializedName("darkModeEnabled") val darkModeEnabled: Boolean = false
+    @SerializedName("darkModeEnabled") val darkModeEnabled: Boolean = false,
+    @SerializedName("customCounterItems") val customCounterItems: String? = null,
+    @SerializedName("freeCount") val freeCount: Int = 0
 )
 
 class BackupManager(
@@ -52,12 +54,19 @@ class BackupManager(
     private val counterDao: CounterDao,
     private val gson: Gson
 ) {
+    private val counterPrefs by lazy {
+        context.getSharedPreferences("counter_prefs", Context.MODE_PRIVATE)
+    }
 
     suspend fun exportBackup(uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val noteLists = noteDao.getAllNoteLists().first()
             val allNotes = noteDao.getAllNotes().first()
             val counter = counterDao.getCounter()
+
+            // Загружаем данные кастомного счётчика
+            val customItems = counterPrefs.getString("custom_items", null)
+            val freeCount = counterPrefs.getInt("free_count", 0)
 
             val backupNoteLists = noteLists.map { list ->
                 val tasks = allNotes.filter { it.noteListId == list.id }
@@ -87,7 +96,9 @@ class BackupManager(
                     notificationsEnabled = SettingsPreferences.loadNotificationsEnabled(context),
                     dailyReminderEnabled = SettingsPreferences.loadDailyReminderEnabled(context),
                     timerNotificationEnabled = SettingsPreferences.loadTimerNotificationEnabled(context),
-                    darkModeEnabled = SettingsPreferences.loadDarkModeEnabled(context)
+                    darkModeEnabled = SettingsPreferences.loadDarkModeEnabled(context),
+                    customCounterItems = customItems,
+                    freeCount = freeCount
                 )
             )
 
@@ -154,6 +165,13 @@ class BackupManager(
             SettingsPreferences.saveDailyReminderEnabled(context, settings.dailyReminderEnabled)
             SettingsPreferences.saveTimerNotificationEnabled(context, settings.timerNotificationEnabled)
             SettingsPreferences.saveDarkModeEnabled(context, settings.darkModeEnabled)
+
+            // Восстанавливаем данные кастомного счётчика
+            counterPrefs.edit().apply {
+                settings.customCounterItems?.let { putString("custom_items", it) }
+                putInt("free_count", settings.freeCount)
+                apply()
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {

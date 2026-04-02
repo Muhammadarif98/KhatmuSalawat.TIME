@@ -279,36 +279,85 @@ fun AlarmScreen(
                 }
                 
                 Spacer(modifier = Modifier.height(90.dp))
-                
-                // Кнопки управления внизу экрана - как на изображении
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+
+                // Кнопки управления внизу экрана с красивой рамкой
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(28.dp),
+                            spotColor = Color.Black.copy(alpha = 0.25f)
+                        )
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFFE8DCC8),
+                                    Color(0xFFD9C9A8),
+                                    Color(0xFFC9B998)
+                                )
+                            ),
+                            shape = RoundedCornerShape(28.dp)
+                        )
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.3f),
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.1f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(28.dp)
+                        )
+                        .padding(4.dp)
                 ) {
-                    // Кнопка назад
-                    ControlButton(
-                        image = R.drawable.backbtn,
-                        contentDescription = "Назад",
-                        onClick = onNavigateBack,
-                        size = 80.dp
-                    )
+                    // Внутренняя рамка
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFF5EDD8),
+                                        Color(0xFFE8DBC0),
+                                        Color(0xFFDDD0B0)
+                                    )
+                                ),
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            .padding(vertical = 16.dp, horizontal = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Кнопка назад
+                            ControlButton(
+                                image = R.drawable.backbtn,
+                                contentDescription = "Назад",
+                                onClick = onNavigateBack,
+                                size = 80.dp
+                            )
 
-                    // Кнопка Play/Pause
-                    ControlButton(
-                        image = if (timerState is TimerState.Running) R.drawable.pausebtn else R.drawable.playbtn,
-                        contentDescription = if (timerState is TimerState.Running) "Пауза" else "Старт",
-                        onClick = { viewModel.toggleTimerState() },
-                        size = 80.dp
-                    )
+                            // Кнопка Play/Pause
+                            ControlButton(
+                                image = if (timerState is TimerState.Running) R.drawable.pausebtn else R.drawable.playbtn,
+                                contentDescription = if (timerState is TimerState.Running) "Пауза" else "Старт",
+                                onClick = { viewModel.toggleTimerState() },
+                                size = 80.dp
+                            )
 
-                    // Кнопка Reset
-                    ControlButton(
-                        image = R.drawable.resetbtn,
-                        contentDescription = "Сброс",
-                        onClick = { viewModel.resetTimer() },
-                        size = 80.dp
-                    )
+                            // Кнопка Reset
+                            ControlButton(
+                                image = R.drawable.resetbtn,
+                                contentDescription = "Сброс",
+                                onClick = { viewModel.resetTimer() },
+                                size = 80.dp
+                            )
+                        }
+                    }
                 }
                 // Кнопка переключения звука/вибрации
                 Box(

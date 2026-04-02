@@ -2,6 +2,7 @@ package com.example.khatmusalawattime.presentation.ui.components.settings
 
 import android.content.Context
 import androidx.core.content.edit
+import com.example.khatmusalawattime.domain.model.Location
 
 /**
  * Класс для управления настройками приложения через SharedPreferences
@@ -13,6 +14,8 @@ object SettingsPreferences {
     private const val DAILY_REMINDER_ENABLED_KEY = "daily_reminder_enabled"
     private const val TIMER_NOTIFICATION_ENABLED_KEY = "timer_notification_enabled"
     private const val DARK_MODE_ENABLED_KEY = "dark_mode_enabled"
+    private const val LOCATION_KEY = "selected_location"
+    private const val ONBOARDING_SHOWN_KEY = "onboarding_shown"
     
     /**
      * Сохраняет время напоминания
@@ -108,7 +111,7 @@ object SettingsPreferences {
      * Сохраняет все настройки уведомлений одновременно
      */
     fun saveNotificationSettings(
-        context: Context, 
+        context: Context,
         notificationsEnabled: Boolean,
         dailyReminderEnabled: Boolean,
         timerNotificationEnabled: Boolean
@@ -119,5 +122,49 @@ object SettingsPreferences {
                 putBoolean(DAILY_REMINDER_ENABLED_KEY, dailyReminderEnabled)
                 putBoolean(TIMER_NOTIFICATION_ENABLED_KEY, timerNotificationEnabled)
             }
+    }
+
+    /**
+     * Сохраняет выбранную локацию
+     */
+    fun saveLocation(context: Context, location: Location) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit {
+                putString(LOCATION_KEY, location.name)
+            }
+    }
+
+    /**
+     * Загружает выбранную локацию
+     */
+    fun loadLocation(context: Context): Location {
+        val name = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(LOCATION_KEY, Location.KHUNZAKH.name) ?: Location.KHUNZAKH.name
+        return Location.fromName(name)
+    }
+
+    /**
+     * Сохраняет флаг показа онбординга
+     */
+    fun saveOnboardingShown(context: Context, shown: Boolean) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit {
+                putBoolean(ONBOARDING_SHOWN_KEY, shown)
+            }
+    }
+
+    /**
+     * Загружает флаг показа онбординга
+     */
+    fun loadOnboardingShown(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(ONBOARDING_SHOWN_KEY, false)
+    }
+
+    /**
+     * Сбрасывает флаг онбординга (для повторного показа)
+     */
+    fun resetOnboarding(context: Context) {
+        saveOnboardingShown(context, false)
     }
 } 

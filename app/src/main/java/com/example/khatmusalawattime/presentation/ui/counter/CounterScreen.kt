@@ -1,5 +1,12 @@
 package com.example.khatmusalawattime.presentation.ui.counter
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,8 +23,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -29,7 +41,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.paint
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -42,15 +56,48 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.khatmusalawattime.R
+import com.example.khatmusalawattime.domain.model.CounterMode
+import com.example.khatmusalawattime.domain.model.CounterState
 
 @Composable
 fun CounterScreen(
     viewModel: CounterViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {}
 ) {
-    val textColor = Color(0xFFFFFFFF) // Цвет текста
-    val buttonBgColor = Color(0xFFEBE3C9) // Цвет кнопок
+    val counterState by viewModel.counterState.collectAsState()
     val count by viewModel.count.collectAsState()
+
+    when (counterState.mode) {
+        is CounterMode.Free -> {
+            FreeCounterScreen(
+                count = count,
+                onIncrement = { viewModel.increment() },
+                onDecrement = { viewModel.decrement() },
+                onReset = { viewModel.reset() },
+                onNavigateBack = onNavigateBack
+            )
+        }
+        else -> {
+            ZikrCounterScreen(
+                state = counterState,
+                onIncrement = { viewModel.increment() },
+                onDecrement = { viewModel.decrement() },
+                onReset = { viewModel.reset() },
+                onNavigateBack = onNavigateBack
+            )
+        }
+    }
+}
+
+@Composable
+private fun FreeCounterScreen(
+    count: Int,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit,
+    onReset: () -> Unit,
+    onNavigateBack: () -> Unit
+) {
+    val textColor = Color(0xFFFFFFFF)
 
     Box(
         modifier = Modifier
@@ -61,8 +108,7 @@ fun CounterScreen(
             )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(371.dp))
@@ -79,16 +125,14 @@ fun CounterScreen(
             )
 
             ClickableImageButton(
-                onClick = { viewModel.increment() },
+                onClick = onIncrement,
                 modifier = Modifier
                     .size(220.dp)
-                    .offset(x = -10.dp,)
-                ,
-                imageNormalRes = R.drawable.clickbtn,      // картинка для обычного состояния
-                imagePressedRes = R.drawable.clickpressedbtn, // картинка для нажатого состояния
+                    .offset(x = (-10).dp),
+                imageNormalRes = R.drawable.clickbtn,
+                imagePressedRes = R.drawable.clickpressedbtn,
                 contentDescription = "Увеличить счетчик"
             )
-
 
             Row(
                 modifier = Modifier
@@ -104,14 +148,14 @@ fun CounterScreen(
                 )
 
                 StatefulImageButton(
-                    onClick = { viewModel.decrement() },
+                    onClick = onDecrement,
                     imageNormalRes = R.drawable.countresetbtn,
                     imagePressedRes = R.drawable.countresetpressedbtn,
                     contentDescription = "Уменьшить"
                 )
 
                 StatefulImageButton(
-                    onClick = { viewModel.reset() },
+                    onClick = onReset,
                     modifier = Modifier.offset(x = 5.dp),
                     imageNormalRes = R.drawable.countzerobtn,
                     imagePressedRes = R.drawable.countzeropressedbtn,
@@ -119,6 +163,349 @@ fun CounterScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ZikrCounterScreen(
+    state: CounterState,
+    onIncrement: () -> Unit,
+    onDecrement: () -> Unit,
+    onReset: () -> Unit,
+    onNavigateBack: () -> Unit
+) {
+    val russoOneFamily = FontFamily(Font(R.font.russo_one_regular))
+    val textColor = Color(0xFF3D2914)
+
+    val backgroundGradient = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFFF8F4E8),
+            Color(0xFFE8DCC8),
+            Color(0xFFD4C4A8)
+        )
+    )
+
+    val borderGradient = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFFD4A574),
+            Color(0xFFF4E4C4),
+            Color(0xFFD4A574),
+            Color(0xFFB8956C)
+        )
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundGradient)
+    ) {
+        // Декоративная рамка
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 12.dp, end = 12.dp, top = 48.dp, bottom = 100.dp)
+                .border(
+                    width = 3.dp,
+                    brush = borderGradient,
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(8.dp)
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFFD4A574).copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+        )
+
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(80.dp))
+
+            ZikrCounterDisplay(
+                state = state,
+                textColor = textColor,
+                russoOneFamily = russoOneFamily
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ClickableImageButton(
+                onClick = onIncrement,
+                modifier = Modifier
+                    .size(220.dp)
+                    .offset(x = (-10).dp),
+                imageNormalRes = R.drawable.clickbtn,
+                imagePressedRes = R.drawable.clickpressedbtn,
+                contentDescription = "Увеличить счетчик"
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 24.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                StatefulImageButton(
+                    onClick = onNavigateBack,
+                    imageNormalRes = R.drawable.countbackbtn,
+                    imagePressedRes = R.drawable.countbackpressedbtn,
+                    contentDescription = "Назад"
+                )
+
+                StatefulImageButton(
+                    onClick = onDecrement,
+                    imageNormalRes = R.drawable.countresetbtn,
+                    imagePressedRes = R.drawable.countresetpressedbtn,
+                    contentDescription = "Уменьшить"
+                )
+
+                StatefulImageButton(
+                    onClick = onReset,
+                    modifier = Modifier.offset(x = 5.dp),
+                    imageNormalRes = R.drawable.countzerobtn,
+                    imagePressedRes = R.drawable.countzeropressedbtn,
+                    contentDescription = "Сбросить"
+                )
+            }
+
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+    }
+}
+
+@Composable
+private fun ZikrCounterDisplay(
+    state: CounterState,
+    textColor: Color,
+    russoOneFamily: FontFamily
+) {
+    val currentZikr = state.currentZikr ?: return
+    val zikrColor = Color(currentZikr.color)
+
+    val animatedProgress by animateFloatAsState(
+        targetValue = state.currentZikrProgress,
+        animationSpec = tween(300),
+        label = "progress"
+    )
+
+    val animatedTotalProgress by animateFloatAsState(
+        targetValue = state.totalProgress,
+        animationSpec = tween(300),
+        label = "totalProgress"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Индикатор зикров (точки)
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            state.zikrItems.forEachIndexed { index, zikr ->
+                val isActive = index == state.currentZikrIndex
+                val isCompleted = index < state.currentZikrIndex ||
+                        (index == state.currentZikrIndex && state.isCompleted)
+
+                val dotColor by animateColorAsState(
+                    targetValue = when {
+                        isCompleted -> Color(0xFF81C784)
+                        isActive -> Color(zikr.color)
+                        else -> textColor.copy(alpha = 0.3f)
+                    },
+                    label = "dotColor"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 6.dp)
+                        .size(if (isActive) 14.dp else 10.dp)
+                        .clip(CircleShape)
+                        .background(dotColor)
+                        .then(
+                            if (isActive) Modifier.border(
+                                2.dp,
+                                textColor.copy(alpha = 0.3f),
+                                CircleShape
+                            ) else Modifier
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isCompleted) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(8.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Название зикра
+        AnimatedContent(
+            targetState = currentZikr.name,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(300)) togetherWith
+                        fadeOut(animationSpec = tween(300))
+            },
+            label = "zikrName"
+        ) { name ->
+            Text(
+                text = name,
+                style = TextStyle(
+                    fontSize = 26.sp,
+                    fontFamily = russoOneFamily,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
+                ),
+                textAlign = TextAlign.Center
+            )
+        }
+
+        // Арабский текст
+        if (currentZikr.arabicText.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            AnimatedContent(
+                targetState = currentZikr.arabicText,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)) togetherWith
+                            fadeOut(animationSpec = tween(300))
+                },
+                label = "arabicText"
+            ) { arabic ->
+                Text(
+                    text = arabic,
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        color = textColor.copy(alpha = 0.7f)
+                    ),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Счётчик
+        if (state.isCompleted) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color(0xFF81C784),
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Завершено!",
+                    style = TextStyle(
+                        fontSize = 32.sp,
+                        fontFamily = russoOneFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF81C784)
+                    )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Всего: ${state.totalZikrCount}",
+                    style = TextStyle(
+                        fontSize = 18.sp,
+                        color = textColor.copy(alpha = 0.7f)
+                    )
+                )
+            }
+        } else {
+            // Текущий счёт
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = state.currentCount.toString(),
+                    style = TextStyle(
+                        fontSize = 72.sp,
+                        fontFamily = russoOneFamily,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = textColor
+                    )
+                )
+                Text(
+                    text = " / ${currentZikr.targetCount}",
+                    style = TextStyle(
+                        fontSize = 28.sp,
+                        fontFamily = russoOneFamily,
+                        fontWeight = FontWeight.Normal,
+                        color = textColor.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier.padding(bottom = 10.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Прогресс текущего зикра
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
+            ) {
+                LinearProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = zikrColor,
+                    trackColor = textColor.copy(alpha = 0.15f),
+                    strokeCap = StrokeCap.Round
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Общий прогресс
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Общий: ${state.completedTotalCount} / ${state.totalZikrCount}",
+                    style = TextStyle(
+                        fontSize = 14.sp,
+                        color = textColor.copy(alpha = 0.5f)
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Box(
+                    modifier = Modifier
+                        .width(100.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(textColor.copy(alpha = 0.15f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedTotalProgress)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Color(0xFF81C784))
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
