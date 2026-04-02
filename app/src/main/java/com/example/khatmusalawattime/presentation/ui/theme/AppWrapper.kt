@@ -11,8 +11,8 @@ import androidx.core.view.WindowCompat
 
 /**
  * AppWrapper - компонент-обертка для всего приложения,
- * который применяет настройки прозрачного статус-бара ко
- * всем экранам.
+ * который применяет настройки прозрачных системных баров ко
+ * всем экранам (edge-to-edge режим).
  */
 @Composable
 fun AppWrapper(content: @Composable () -> Unit) {
@@ -23,9 +23,10 @@ fun AppWrapper(content: @Composable () -> Unit) {
     DisposableEffect(Unit) {
         val window = (context as? Activity)?.window
         if (window != null) {
-            // Делаем фон статус-бара прозрачным
+            // Делаем статус-бар и навигационную панель прозрачными
             window.statusBarColor = Color.Transparent.toArgb()
-            // Разрешаем контенту заходить под статус-бар
+            window.navigationBarColor = Color.Transparent.toArgb()
+            // Разрешаем контенту заходить под системные бары
             WindowCompat.setDecorFitsSystemWindows(window, false)
             // Иконки статус-бара тёмные (для светлого фона)
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true

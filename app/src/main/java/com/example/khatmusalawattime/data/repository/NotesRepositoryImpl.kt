@@ -6,9 +6,11 @@ import com.example.khatmusalawattime.data.local.entity.NoteListEntity
 import com.example.khatmusalawattime.domain.model.GoalList
 import com.example.khatmusalawattime.domain.model.Task
 import com.example.khatmusalawattime.domain.repository.NotesRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
 import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
@@ -18,18 +20,21 @@ class NotesRepositoryImpl @Inject constructor(
 ) : NotesRepository {
     
     override fun getAllGoalLists(): Flow<List<GoalList>> {
-        return noteDao.getAllNoteLists().map { entities ->
-            entities.map { entity ->
-                // Получаем заметки для этого списка
-                val notes = noteDao.getNotesByListId(entity.id).first()
-                
-                // Преобразуем заметки в задачи
-                val tasks = notes.map { noteEntity -> noteEntity.toTask() }
-                
+        // Combine обоих Flow для реактивности на изменения в обеих таблицах
+        return combine(
+            noteDao.getAllNoteLists(),
+            noteDao.getAllNotes()
+        ) { listEntities, allNotes ->
+            listEntities.map { entity ->
+                // Фильтруем заметки для этого списка
+                val tasks = allNotes
+                    .filter { it.noteListId == entity.id }
+                    .map { noteEntity -> noteEntity.toTask() }
+
                 // Преобразуем сущность списка в модель
                 entity.toGoalList(tasks)
             }
-        }
+        }.flowOn(Dispatchers.IO) // Обработка данных в фоновом потоке
     }
 
     override suspend fun getGoalListById(id: String): GoalList? {

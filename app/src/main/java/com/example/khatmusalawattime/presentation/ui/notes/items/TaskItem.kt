@@ -1,25 +1,27 @@
 package com.example.khatmusalawattime.presentation.ui.notes.items
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,17 +33,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.khatmusalawattime.domain.model.Task
@@ -57,13 +61,15 @@ fun TaskItem(
     editingId: String?,
     onSaveEdit: (String) -> Unit,
     onCancelEdit: () -> Unit,
-    backgroundColor: Color,
+    cardColor: Color,
     textColor: Color,
+    secondaryTextColor: Color,
     accentColor: Color,
-    itemHeight: Dp = 70.dp,
     resetSwipeTrigger: Long
 ) {
-    // Состояние для редактирования
+    // Кэшируем цвет завершённой задачи
+    val completedColor = remember { Color(0xFF81C784) }
+
     var editedTitle by remember(task.id) {
         mutableStateOf(
             TextFieldValue(
@@ -73,35 +79,55 @@ fun TaskItem(
         )
     }
 
-    // Состояние для анимации свечения после установки галочки
-    var showCompletionGlow by remember { mutableStateOf(false) }
+    // Ключ для анимаций — привязан к task.id и task.isCompleted
+    val taskKey = remember(task.id, task.isCompleted) { "${task.id}_${task.isCompleted}" }
 
-    // Состояние для отслеживания предыдущего значения isCompleted
-    // Это предотвратит запуск эффекта при первой загрузке
-    var prevIsCompleted by remember { mutableStateOf(task.isCompleted) }
+    // Анимация свечения — только при завершении
+    var showCompletionGlow by remember(task.id) { mutableStateOf(false) }
 
-    // Анимируемое значение для эффекта свечения с более плавной анимацией
+    // Анимация масштаба чекбокса
+    var checkboxAnimationTrigger by remember(task.id) { mutableStateOf(false) }
+
     val glowAlpha by animateFloatAsState(
-        targetValue = if (showCompletionGlow) 0.5f else 0f,
-        animationSpec = tween(
-            durationMillis = 1000, // Общая длительность анимации — 1 секунда
-            easing = { fraction ->
-                fraction * 2f // Линейное увеличение от 0 до 1
-            }
-        ),
+        targetValue = if (showCompletionGlow && task.isCompleted) 0.6f else 0f,
+        animationSpec = tween(400),
         label = "glow"
     )
 
-    // Эффект для отслеживания изменения состояния задачи и показа свечения
-    LaunchedEffect(task.isCompleted) {
-        // Проверяем, было ли изменение состояния и не является ли это первой загрузкой
-        if (task.isCompleted != prevIsCompleted && task.isCompleted) {
+    val checkboxScale by animateFloatAsState(
+        targetValue = if (checkboxAnimationTrigger) 1.2f else 1f,
+        animationSpec = spring(dampingRatio = 0.4f, stiffness = 400f),
+        label = "scale"
+    )
+
+    // Анимация цвета чекбокса — напрямую зависит от task.isCompleted
+    val checkboxBgColor by animateColorAsState(
+        targetValue = if (task.isCompleted) completedColor else Color.Transparent,
+        animationSpec = tween(200),
+        label = "checkboxBg"
+    )
+
+    val checkboxBorderColor by animateColorAsState(
+        targetValue = if (task.isCompleted) completedColor else accentColor.copy(alpha = 0.5f),
+        animationSpec = tween(200),
+        label = "checkboxBorder"
+    )
+
+    // Запускаем анимацию только при изменении состояния на "выполнено"
+    LaunchedEffect(taskKey) {
+        if (task.isCompleted) {
+            // Задача завершена — показываем анимацию
+            checkboxAnimationTrigger = true
             showCompletionGlow = true
-            delay(1300) // Показываем свечение немного дольше для более заметного эффекта
+            delay(150)
+            checkboxAnimationTrigger = false
+            delay(600)
             showCompletionGlow = false
+        } else {
+            // Задача не завершена — сбрасываем анимации
+            showCompletionGlow = false
+            checkboxAnimationTrigger = false
         }
-        // Обновляем предыдущее состояние
-        prevIsCompleted = task.isCompleted
     }
 
     val focusRequester = remember { FocusRequester() }
@@ -113,9 +139,40 @@ fun TaskItem(
     }
 
     if (editingId == task.id) {
-        // Режим редактирования - без свайпа
-        ListItem(
-            headlineContent = {
+        // Режим редактирования
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(4.dp, RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(16.dp))
+                .background(cardColor)
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Чекбокс (неактивный в режиме редактирования)
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(checkboxBgColor)
+                        .border(2.dp, checkboxBorderColor, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (task.isCompleted) {
+                        Icon(
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
                 BasicTextField(
                     value = editedTitle,
                     onValueChange = { editedTitle = it },
@@ -128,29 +185,33 @@ fun TaskItem(
                         onDone = { onSaveEdit(editedTitle.text) }
                     ),
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .weight(1f)
                         .focusRequester(focusRequester),
                     cursorBrush = SolidColor(accentColor)
                 )
-            },
-            trailingContent = {
-                IconButton(onClick = { onSaveEdit(editedTitle.text) }) {
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Кнопка сохранения
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(accentColor)
+                        .clickable { onSaveEdit(editedTitle.text) },
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Сохранить",
-                        tint = accentColor
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .defaultMinSize(minHeight = itemHeight),
-            colors = ListItemDefaults.colors(containerColor = backgroundColor),
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp
-        )
+            }
+        }
     } else {
-        // Обычный режим отображения - со свайпом
+        // Обычный режим
         SwipeToAction(
             onEdit = onEditClick,
             onDelete = onDeleteClick,
@@ -160,71 +221,64 @@ fun TaskItem(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 0.dp, vertical = 0.dp)
+                    .shadow(4.dp, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(cardColor)
+                    .clickable(onClick = onToggleCompletion)
+                    .padding(16.dp)
             ) {
-                ListItem(
-                    headlineContent = {
-                        Box(
-                            modifier = Modifier
-                                .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 8.dp)
-                        ) {
-                            Text(
-                                text = task.title,
-                                color = if (task.isCompleted) textColor.copy(alpha = 0.5f) else textColor,
-                                textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
-                                fontSize = 16.sp,
-                                maxLines = Int.MAX_VALUE, // Разрешаем неограниченное число строк
-                                overflow = TextOverflow.Visible // Текст не будет обрезаться
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Красивый анимированный чекбокс
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .scale(checkboxScale)
+                            .drawBehind {
+                                if (showCompletionGlow) {
+                                    drawCircle(
+                                        color = completedColor.copy(alpha = glowAlpha),
+                                        radius = size.width * 0.8f
+                                    )
+                                }
+                            }
+                            .clip(CircleShape)
+                            .background(checkboxBgColor)
+                            .border(2.dp, checkboxBorderColor, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (task.isCompleted) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = "Выполнено",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
-                    },
-                    trailingContent = {
-                        // Круглый чекбокс с эффектом свечения
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                // Эффект свечения вокруг галочки когда она только что установлена
-                                .drawBehind {
-                                    if (showCompletionGlow) {
-                                        drawCircle(
-                                            color = Color(0xFF00BCD4).copy(alpha = glowAlpha),
-                                            radius = size.width * 0.6f, // Уменьшаем радиус, чтобы он был примерно на 1dp больше размера круга
-                                            center = center
-                                        )
-                                    }
-                                }
-                                .clip(CircleShape)
-                                .background(
-                                    color = if (task.isCompleted)
-                                        Color(0xFF00BCD4)
-                                    else
-                                        Color.Transparent
-                                )
-                                .border(
-                                    width = 2.dp,
-                                    color = Color(0xFF00BCD4).copy(alpha = 0.7f),
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (task.isCompleted) {
-                                Icon(
-                                    imageVector = Icons.Filled.Check,
-                                    contentDescription = "Выполнено",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .defaultMinSize(minHeight = itemHeight)
-                        .clickable(onClick = onToggleCompletion),  // Клик по всему элементу для изменения состояния
-                    colors = ListItemDefaults.colors(containerColor = backgroundColor),
-                    tonalElevation = 0.dp, // Устраняем эффект тени
-                    shadowElevation = 0.dp
-                )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // Текст задачи
+                    Text(
+                        text = task.title,
+                        color = if (task.isCompleted)
+                            textColor.copy(alpha = 0.5f)
+                        else
+                            textColor,
+                        textDecoration = if (task.isCompleted)
+                            TextDecoration.LineThrough
+                        else
+                            TextDecoration.None,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Normal,
+                        maxLines = Int.MAX_VALUE,
+                        overflow = TextOverflow.Visible,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

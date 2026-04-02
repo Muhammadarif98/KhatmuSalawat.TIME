@@ -8,13 +8,18 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import com.example.khatmusalawattime.domain.model.AzkarPreset
+import com.example.khatmusalawattime.domain.model.CounterGoal
 import com.example.khatmusalawattime.domain.model.CounterMode
+import com.example.khatmusalawattime.domain.model.CounterModeType
 import com.example.khatmusalawattime.domain.model.CounterState
+import com.example.khatmusalawattime.domain.model.CounterStats
+import com.example.khatmusalawattime.domain.model.GoalType
 import com.example.khatmusalawattime.domain.model.WirdPreset
 import com.example.khatmusalawattime.domain.model.ZikrItem
 import com.example.khatmusalawattime.domain.usecase.counter.CounterUseCases
@@ -23,8 +28,10 @@ import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,6 +40,15 @@ private const val TAG = "CounterViewModel"
 private const val PREFS_NAME = "counter_prefs"
 private const val KEY_FREE_COUNT = "free_count"
 private const val KEY_CUSTOM_ITEMS = "custom_items"
+
+// Ключи для сохранения прогресса режимов
+private const val KEY_AZKAR_INDEX = "azkar_current_index"
+private const val KEY_AZKAR_COUNT = "azkar_current_count"
+private const val KEY_WIRD_COUNT_PER_ZIKR = "wird_count_per_zikr"
+private const val KEY_WIRD_INDEX = "wird_current_index"
+private const val KEY_WIRD_COUNT = "wird_current_count"
+private const val KEY_CUSTOM_INDEX = "custom_current_index"
+private const val KEY_CUSTOM_COUNT = "custom_current_count"
 
 @HiltViewModel
 class CounterViewModel @Inject constructor(
@@ -52,6 +68,30 @@ class CounterViewModel @Inject constructor(
     private val _count = MutableStateFlow(0)
     val count: StateFlow<Int> = _count.asStateFlow()
 
+    // Статистика счётчика (реактивная - обновляется автоматически)
+    val stats: StateFlow<CounterStats> = counterUseCases.getStats.observeStats()
+        .stateIn(viewModelScope, SharingStarted.Lazily, CounterStats())
+
+    // Активные цели
+    val activeGoals: StateFlow<List<CounterGoal>> = counterUseCases.getActiveGoals()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    // Индекс выбранной цели в списке
+    private val _selectedGoalIndex = MutableStateFlow(0)
+    val selectedGoalIndex: StateFlow<Int> = _selectedGoalIndex.asStateFlow()
+
+    // Текущая выбранная цель (по индексу)
+    private val _activeGoal = MutableStateFlow<CounterGoal?>(null)
+    val activeGoal: StateFlow<CounterGoal?> = _activeGoal.asStateFlow()
+
+    // Показывать ли диалог создания цели
+    private val _showGoalDialog = MutableStateFlow(false)
+    val showGoalDialog: StateFlow<Boolean> = _showGoalDialog.asStateFlow()
+
+    // Показывать ли секцию статистики (свёрнута/развёрнута)
+    private val _statsExpanded = MutableStateFlow(false)
+    val statsExpanded: StateFlow<Boolean> = _statsExpanded.asStateFlow()
+
     // MediaPlayer для звуков
     private var clickPlayer: MediaPlayer? = null
     private var milestone100Player: MediaPlayer? = null
@@ -70,6 +110,8 @@ class CounterViewModel @Inject constructor(
     init {
         loadFreeCounter()
         prepareMediaPlayers()
+        loadStats()
+        observeActiveGoals()
     }
 
     /**
@@ -83,10 +125,27 @@ class CounterViewModel @Inject constructor(
             is CounterMode.Custom -> mode.items
         }
 
+        // Загружаем сохранённое состояние для режима
+        val (savedIndex, savedCount) = when (mode) {
+            is CounterMode.Azkar -> loadAzkarState()
+            is CounterMode.Wird -> {
+                val (_, index, count) = loadWirdState()
+                Pair(index, count)
+            }
+            is CounterMode.Custom -> loadCustomState()
+            is CounterMode.Free -> Pair(0, 0)
+        }
+
+        // Проверяем, что индекс не выходит за пределы списка
+        val validIndex = if (items.isNotEmpty()) savedIndex.coerceIn(0, items.size - 1) else 0
+        // Проверяем, что счёт не превышает максимум текущего зикра
+        val maxCount = items.getOrNull(validIndex)?.targetCount ?: Int.MAX_VALUE
+        val validCount = savedCount.coerceIn(0, maxCount - 1)
+
         _counterState.value = CounterState(
             mode = mode,
-            currentZikrIndex = 0,
-            currentCount = 0,
+            currentZikrIndex = validIndex,
+            currentCount = validCount,
             isCompleted = false,
             zikrItems = items
         )
@@ -118,8 +177,15 @@ class CounterViewModel @Inject constructor(
                     saveFreeCounter(newCount)
                     playClickSound()
 
+                    // Обновляем прогресс активной цели
+                    updateActiveGoalProgress()
+
+                    // Записываем в историю
+                    counterUseCases.recordSession(1, CounterModeType.FREE)
+
                     if (newCount % 100 == 0) {
                         playMilestoneSound()
+                        loadStats() // Обновляем статистику после каждых 100
                     }
                 }
 
@@ -130,6 +196,9 @@ class CounterViewModel @Inject constructor(
                     val newCount = state.currentCount + 1
 
                     playClickSound()
+
+                    // Записываем в историю (цель НЕ обновляем — только свободный счётчик влияет на цель)
+                    counterUseCases.recordSession(1, state.mode.type)
 
                     if (newCount >= currentZikr.targetCount) {
                         // Завершили текущий зикр
@@ -143,7 +212,9 @@ class CounterViewModel @Inject constructor(
                                     isCompleted = true
                                 )
                             }
+                            saveCurrentModeState()
                             vibrateComplete()
+                            loadStats() // Обновляем статистику
                         } else {
                             // Переходим к следующему зикру
                             vibrateTransition()
@@ -154,10 +225,12 @@ class CounterViewModel @Inject constructor(
                                     currentCount = 0
                                 )
                             }
+                            saveCurrentModeState()
                         }
                     } else {
                         // Просто увеличиваем счётчик
                         _counterState.update { it.copy(currentCount = newCount) }
+                        saveCurrentModeState()
                     }
                 }
             }
@@ -189,6 +262,7 @@ class CounterViewModel @Inject constructor(
                                 isCompleted = false
                             )
                         }
+                        saveCurrentModeState()
                         playClickSound()
                     } else if (state.currentZikrIndex > 0) {
                         // Возвращаемся к предыдущему зикру
@@ -201,6 +275,7 @@ class CounterViewModel @Inject constructor(
                                 isCompleted = false
                             )
                         }
+                        saveCurrentModeState()
                         playClickSound()
                     }
                 }
@@ -232,6 +307,7 @@ class CounterViewModel @Inject constructor(
                             isCompleted = false
                         )
                     }
+                    saveCurrentModeState()
                     playClickSound()
                 }
             }
@@ -316,6 +392,249 @@ class CounterViewModel @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка сохранения кастомных элементов", e)
         }
+    }
+
+    // === Mode State Persistence ===
+
+    /**
+     * Сохраняет состояние режима Azkar
+     */
+    private fun saveAzkarState(index: Int, count: Int) {
+        sharedPrefs.edit {
+            putInt(KEY_AZKAR_INDEX, index)
+            putInt(KEY_AZKAR_COUNT, count)
+        }
+    }
+
+    /**
+     * Загружает состояние режима Azkar
+     */
+    private fun loadAzkarState(): Pair<Int, Int> {
+        val index = sharedPrefs.getInt(KEY_AZKAR_INDEX, 0)
+        val count = sharedPrefs.getInt(KEY_AZKAR_COUNT, 0)
+        return Pair(index, count)
+    }
+
+    /**
+     * Сохраняет состояние режима Wird
+     */
+    private fun saveWirdState(countPerZikr: Int, index: Int, count: Int) {
+        sharedPrefs.edit {
+            putInt(KEY_WIRD_COUNT_PER_ZIKR, countPerZikr)
+            putInt(KEY_WIRD_INDEX, index)
+            putInt(KEY_WIRD_COUNT, count)
+        }
+    }
+
+    /**
+     * Загружает состояние режима Wird
+     * @return Triple(countPerZikr, index, count)
+     */
+    private fun loadWirdState(): Triple<Int, Int, Int> {
+        val countPerZikr = sharedPrefs.getInt(KEY_WIRD_COUNT_PER_ZIKR, 100)
+        val index = sharedPrefs.getInt(KEY_WIRD_INDEX, 0)
+        val count = sharedPrefs.getInt(KEY_WIRD_COUNT, 0)
+        return Triple(countPerZikr, index, count)
+    }
+
+    /**
+     * Сохраняет состояние режима Custom
+     */
+    private fun saveCustomState(index: Int, count: Int) {
+        sharedPrefs.edit {
+            putInt(KEY_CUSTOM_INDEX, index)
+            putInt(KEY_CUSTOM_COUNT, count)
+        }
+    }
+
+    /**
+     * Загружает состояние режима Custom
+     */
+    private fun loadCustomState(): Pair<Int, Int> {
+        val index = sharedPrefs.getInt(KEY_CUSTOM_INDEX, 0)
+        val count = sharedPrefs.getInt(KEY_CUSTOM_COUNT, 0)
+        return Pair(index, count)
+    }
+
+    /**
+     * Сохраняет текущее состояние в зависимости от режима
+     */
+    private fun saveCurrentModeState() {
+        val state = _counterState.value
+        when (state.mode) {
+            is CounterMode.Azkar -> {
+                saveAzkarState(state.currentZikrIndex, state.currentCount)
+            }
+            is CounterMode.Wird -> {
+                saveWirdState(
+                    (state.mode as CounterMode.Wird).countPerZikr,
+                    state.currentZikrIndex,
+                    state.currentCount
+                )
+            }
+            is CounterMode.Custom -> {
+                saveCustomState(state.currentZikrIndex, state.currentCount)
+            }
+            is CounterMode.Free -> {
+                // Свободный режим сохраняется отдельно
+            }
+        }
+    }
+
+    // === Statistics & Goals ===
+
+    private fun loadStats() {
+        // Статистика обновляется реактивно через Flow - этот метод оставлен для совместимости
+    }
+
+    private fun observeActiveGoals() {
+        viewModelScope.launch {
+            // Комбинируем список целей и выбранный индекс
+            kotlinx.coroutines.flow.combine(activeGoals, _selectedGoalIndex) { goals, index ->
+                goals to index
+            }.collect { (goals, index) ->
+                // Корректируем индекс если он вышел за границы
+                val validIndex = if (goals.isEmpty()) 0 else index.coerceIn(0, goals.size - 1)
+                if (validIndex != index) {
+                    _selectedGoalIndex.value = validIndex
+                }
+                _activeGoal.value = goals.getOrNull(validIndex)
+            }
+        }
+    }
+
+    /**
+     * Выбирает цель по индексу (для свайпа)
+     */
+    fun selectGoal(index: Int) {
+        val goals = activeGoals.value
+        if (goals.isNotEmpty()) {
+            _selectedGoalIndex.value = index.coerceIn(0, goals.size - 1)
+        }
+    }
+
+    /**
+     * Переключает на следующую незавершённую цель после завершения текущей
+     */
+    private fun switchToNextIncompleteGoal() {
+        val goals = activeGoals.value
+        val currentIndex = _selectedGoalIndex.value
+
+        // Ищем следующую незавершённую цель начиная с текущей позиции
+        val nextIndex = goals.indices
+            .drop(currentIndex + 1)
+            .firstOrNull { !goals[it].isCompleted }
+            ?: goals.indices.firstOrNull { !goals[it].isCompleted }
+
+        if (nextIndex != null && nextIndex != currentIndex) {
+            _selectedGoalIndex.value = nextIndex
+        }
+    }
+
+    private fun updateActiveGoalProgress() {
+        viewModelScope.launch {
+            // Берём цель напрямую по индексу, а не через _activeGoal (избегаем race condition)
+            val goals = activeGoals.value
+            val index = _selectedGoalIndex.value
+            val goal = goals.getOrNull(index) ?: return@launch
+
+            // Не обновляем прогресс завершённой цели
+            if (goal.isCompleted) return@launch
+
+            try {
+                val completed = counterUseCases.updateGoalProgress(goal.id, 1)
+                if (completed) {
+                    vibrateComplete()
+                    loadStats()
+                    // Переключаемся на следующую незавершённую цель
+                    delay(500) // Небольшая задержка чтобы пользователь увидел завершение
+                    switchToNextIncompleteGoal()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка обновления прогресса цели", e)
+            }
+        }
+    }
+
+    /**
+     * Создаёт новую цель счётчика
+     */
+    fun createGoal(
+        title: String,
+        targetCount: Int,
+        goalType: GoalType
+    ) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Создание цели: title=$title, targetCount=$targetCount, goalType=$goalType")
+
+                val goal = counterUseCases.createGoal(
+                    title = title,
+                    targetCount = targetCount,
+                    goalType = goalType
+                )
+
+                Log.d(TAG, "Цель создана: id=${goal.id}")
+
+                _showGoalDialog.value = false
+                Toast.makeText(application, "Цель создана", Toast.LENGTH_SHORT).show()
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка создания цели", e)
+                Toast.makeText(application, "Ошибка создания цели", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * Удаляет цель счётчика
+     */
+    fun deleteGoal(goalId: String) {
+        viewModelScope.launch {
+            try {
+                counterUseCases.deleteGoal(goalId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка удаления цели", e)
+            }
+        }
+    }
+
+    /**
+     * Сбрасывает прогресс цели (обнуляет счётчик, не удаляя цель)
+     */
+    fun resetGoalProgress(goalId: String) {
+        viewModelScope.launch {
+            try {
+                counterUseCases.resetGoalProgress(goalId)
+                Toast.makeText(application, "Прогресс сброшен", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Log.e(TAG, "Ошибка сброса прогресса цели", e)
+            }
+        }
+    }
+
+    /**
+     * Показать/скрыть диалог создания цели
+     */
+    fun showGoalDialog(show: Boolean) {
+        _showGoalDialog.value = show
+    }
+
+    /**
+     * Развернуть/свернуть секцию статистики
+     */
+    fun toggleStatsExpanded() {
+        _statsExpanded.value = !_statsExpanded.value
+        if (_statsExpanded.value) {
+            loadStats() // Обновляем статистику при открытии
+        }
+    }
+
+    /**
+     * Принудительное обновление статистики
+     */
+    fun refreshStats() {
+        loadStats()
     }
 
     // === Sound ===

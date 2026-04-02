@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
@@ -18,7 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.khatmusalawattime.domain.model.ReminderData
-import com.example.khatmusalawattime.presentation.navigation.AppNavigation
+import com.example.khatmusalawattime.presentation.navigation.MainScreen
 import com.example.khatmusalawattime.presentation.notification.scheduleDailyNotification
 import com.example.khatmusalawattime.presentation.theme.KhatmuSalawatTIMETheme
 import com.example.khatmusalawattime.presentation.ui.home.HomeScreen
@@ -49,14 +50,17 @@ class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
+        // Включаем edge-to-edge для полноэкранного отображения
+        enableEdgeToEdge()
+
         // Запрашиваем разрешения при первом запуске
         requestAllPermissions()
 
         setContent {
             KhatmuSalawatTIMETheme {
                 AppWrapper {
-                    AppNavigation()
+                    MainScreen()
 
                     // Получаем ViewModel
                     val viewModel: HomeViewModel = hiltViewModel()

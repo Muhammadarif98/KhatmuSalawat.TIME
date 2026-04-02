@@ -71,14 +71,38 @@ fun AlarmScreen(
     viewModel: AlarmViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {}
 ) {
-    // Colors
-    val pageBgColor = Color(0xFFFFF2CC) // Светлый фоновый цвет страницы
-    val deviceBgColor = Color(0xFFE8D8B1) // Цвет устройства как на изображении
-    val dBgColor = Color(0xFFD2BD85) // Цвет устройства как на изображении
-    val dBgColor2 = Color(0xFFEEE3C5) // Цвет устройства как на изображении
-    val dBgColor3 = Color(0xFFBCA586) // Цвет устройства как на изображении
-    val textColor = Color(0xFF8B7E66)
-    val accentColor = Color(0xFFD9CAA4)
+    // Кэшируем цвета
+    val pageBgColor = remember { Color(0xFFFFF2CC) }
+    val deviceBgColor = remember { Color(0xFFE8D8B1) }
+    val dBgColor = remember { Color(0xFFD2BD85) }
+    val dBgColor2 = remember { Color(0xFFEEE3C5) }
+    val dBgColor3 = remember { Color(0xFFBCA586) }
+    val textColor = remember { Color(0xFF8B7E66) }
+    val accentColor = remember { Color(0xFFD9CAA4) }
+
+    // Кэшируем градиенты
+    val deviceGradient = remember {
+        Brush.verticalGradient(colors = listOf(dBgColor, dBgColor2, dBgColor3))
+    }
+    val controlPanelOuterGradient = remember {
+        Brush.verticalGradient(
+            colors = listOf(Color(0xFFE8DCC8), Color(0xFFD9C9A8), Color(0xFFC9B998))
+        )
+    }
+    val controlPanelHighlightGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.3f),
+                Color.Transparent,
+                Color.Black.copy(alpha = 0.1f)
+            )
+        )
+    }
+    val controlPanelInnerGradient = remember {
+        Brush.verticalGradient(
+            colors = listOf(Color(0xFFF5EDD8), Color(0xFFE8DBC0), Color(0xFFDDD0B0))
+        )
+    }
     
     // States
     val selectedTime by viewModel.selectedTime.collectAsState()
@@ -135,15 +159,7 @@ fun AlarmScreen(
                             shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 50.dp, bottomEnd = 50.dp),
                             spotColor = Color.Black.copy(alpha = 0.3f)
                         )
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    dBgColor,
-                                    dBgColor2,
-                                    dBgColor3
-                                )
-                            )
-                        )
+                        .background(brush = deviceGradient)
                         .padding(24.dp),
                     contentAlignment = Alignment.TopCenter
                 ) {
@@ -291,23 +307,11 @@ fun AlarmScreen(
                             spotColor = Color.Black.copy(alpha = 0.25f)
                         )
                         .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFFE8DCC8),
-                                    Color(0xFFD9C9A8),
-                                    Color(0xFFC9B998)
-                                )
-                            ),
+                            brush = controlPanelOuterGradient,
                             shape = RoundedCornerShape(28.dp)
                         )
                         .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.3f),
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.1f)
-                                )
-                            ),
+                            brush = controlPanelHighlightGradient,
                             shape = RoundedCornerShape(28.dp)
                         )
                         .padding(4.dp)
@@ -317,13 +321,7 @@ fun AlarmScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color(0xFFF5EDD8),
-                                        Color(0xFFE8DBC0),
-                                        Color(0xFFDDD0B0)
-                                    )
-                                ),
+                                brush = controlPanelInnerGradient,
                                 shape = RoundedCornerShape(24.dp)
                             )
                             .padding(vertical = 16.dp, horizontal = 8.dp)

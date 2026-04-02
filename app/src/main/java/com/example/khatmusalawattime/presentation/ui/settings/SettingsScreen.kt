@@ -140,29 +140,33 @@ fun SettingsScreen(
         }
     }
     
-    // Цвета для UI
-    val backgroundColor = Color(0xFFFAF7F2)
-    val textColor = Color(0xFF7C5F23)
-    val accentColor = Color(0xFF827868)
-    
-    // Цвета для градиентной обводки
-    val borderGradient = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFF4DBAD),
-            Color(0xFFFDFBCC),
-            Color(0xFFF9EBBD),
-            Color(0xFFF4DBAD)
+    // Кэшируем цвета для UI
+    val backgroundColor = remember { Color(0xFFFAF7F2) }
+    val textColor = remember { Color(0xFF7C5F23) }
+    val accentColor = remember { Color(0xFF827868) }
+
+    // Кэшируем градиент для обводки
+    val borderGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFF4DBAD),
+                Color(0xFFFDFBCC),
+                Color(0xFFF9EBBD),
+                Color(0xFFF4DBAD)
+            )
         )
-    )
-    
-    // Цвета для градиентного фона карточек
-    val cardGradient = Brush.horizontalGradient(
-        colors = listOf(
-            Color(0xFFF1E4D1),
-            Color(0xFFFFFFFC),
-            Color(0xFFF1E4D1)
+    }
+
+    // Кэшируем градиент для фона карточек
+    val cardGradient = remember {
+        Brush.horizontalGradient(
+            colors = listOf(
+                Color(0xFFF1E4D1),
+                Color(0xFFFFFFFC),
+                Color(0xFFF1E4D1)
+            )
         )
-    )
+    }
 
     // Используем кастомный диалог выбора времени
     TimePickerDialog(

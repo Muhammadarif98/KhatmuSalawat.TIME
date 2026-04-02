@@ -43,7 +43,8 @@ data class NoteListEntity(
                         content = "",
                         isCompleted = task.isCompleted,
                         createdAt = task.createdAt.time,
-                        updatedAt = task.updatedAt.time
+                        updatedAt = task.updatedAt.time,
+                        linkedGoalId = task.linkedGoalId
                     )
                 },
                 createdAt = goalList.createdAt.time,
@@ -73,7 +74,8 @@ data class NoteEntity(
     val content: String,
     val isCompleted: Boolean,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val linkedGoalId: String? = null
 ) {
     fun toTask(): Task {
         return Task(
@@ -81,10 +83,11 @@ data class NoteEntity(
             title = title,
             isCompleted = isCompleted,
             createdAt = Date(createdAt),
-            updatedAt = Date(updatedAt)
+            updatedAt = Date(updatedAt),
+            linkedGoalId = linkedGoalId
         )
     }
-    
+
     companion object {
         fun fromTask(task: Task, noteListId: String): NoteEntity {
             return NoteEntity(
@@ -94,7 +97,8 @@ data class NoteEntity(
                 content = "",
                 isCompleted = task.isCompleted,
                 createdAt = task.createdAt.time,
-                updatedAt = task.updatedAt.time
+                updatedAt = task.updatedAt.time,
+                linkedGoalId = task.linkedGoalId
             )
         }
     }

@@ -1,5 +1,6 @@
 package com.example.khatmusalawattime.presentation.ui.notes
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.khatmusalawattime.domain.model.GoalList
@@ -11,13 +12,14 @@ import com.example.khatmusalawattime.domain.notes.usecase.GetAllGoalListsUseCase
 import com.example.khatmusalawattime.domain.notes.usecase.ToggleTaskCompletionUseCase
 import com.example.khatmusalawattime.domain.notes.usecase.UpdateGoalListTitleUseCase
 import com.example.khatmusalawattime.domain.notes.usecase.UpdateTaskTitleUseCase
+import com.example.khatmusalawattime.domain.repository.CounterGoalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "NotesViewModel"
 
 @HiltViewModel
 class NotesViewModel @Inject constructor(
@@ -28,7 +30,8 @@ class NotesViewModel @Inject constructor(
     private val addTaskUseCase: AddTaskUseCase,
     private val updateTaskTitleUseCase: UpdateTaskTitleUseCase,
     private val toggleTaskCompletionUseCase: ToggleTaskCompletionUseCase,
-    private val deleteTaskUseCase: DeleteTaskUseCase
+    private val deleteTaskUseCase: DeleteTaskUseCase,
+    private val counterGoalRepository: CounterGoalRepository
 ) : ViewModel() {
 
     private val _goalLists = MutableStateFlow<List<GoalList>>(emptyList())
@@ -51,6 +54,11 @@ class NotesViewModel @Inject constructor(
         viewModelScope.launch {
             getAllGoalListsUseCase().collect { lists ->
                 _goalLists.value = lists
+
+                // Синхронизируем selectedGoalList с актуальными данными из БД
+                _selectedGoalList.value?.let { selected ->
+                    _selectedGoalList.value = lists.find { it.id == selected.id }
+                }
             }
         }
     }
@@ -70,50 +78,17 @@ class NotesViewModel @Inject constructor(
 
     fun addNewList(title: String) {
         if (title.isBlank()) return
-        
+
         viewModelScope.launch {
             try {
-                // Создаем новый список локально для оптимистичного обновления
-                val newListId = java.util.UUID.randomUUID().toString()
-                val currentDate = java.util.Date()
-                val newList = com.example.khatmusalawattime.domain.model.GoalList(
-                    id = newListId,
-                    title = title,
-                    isCompleted = false,
-                    tasks = emptyList(),
-                    createdAt = currentDate,
-                    updatedAt = currentDate
-                )
-                
-                // Оптимистично добавляем в общий список
-                _goalLists.update { currentLists ->
-                    currentLists + newList
-                }
-                
-                // Триггерим первое обновление UI
-                triggerSwipeReset()
-                
-                // Фактическое добавление в базу данных
-                addGoalListUseCase(title)
-                
                 _isAddingNewList.value = false
-                
-                // Триггерим повторное обновление UI
                 triggerSwipeReset()
+
+                // Сохраняем в БД — Flow автоматически обновит _goalLists
+                addGoalListUseCase(title)
             } catch (e: Exception) {
-                // В случае ошибки восстанавливаем предыдущее состояние через переинициализацию всех списков
-                viewModelScope.launch {
-                    try {
-                        // Получаем только первое значение из потока
-                        val lists = getAllGoalListsUseCase().first()
-                        _goalLists.value = lists
-                        _isAddingNewList.value = false
-                        triggerSwipeReset()
-                    } catch (e: Exception) {
-                        // Обрабатываем возможные ошибки при получении списков
-                        _isAddingNewList.value = false
-                    }
-                }
+                _isAddingNewList.value = false
+                triggerSwipeReset()
             }
         }
     }
@@ -123,78 +98,34 @@ class NotesViewModel @Inject constructor(
             _selectedGoalList.value = null
             return
         }
-        
+
         // Находим актуальную версию списка из _goalLists по ID
         val freshGoalList = _goalLists.value.find { it.id == goalList.id }
         _selectedGoalList.value = freshGoalList ?: goalList
-        
-        // Триггерим обновление UI после выбора списка
-        triggerSwipeReset()
     }
 
     fun addNewTask(title: String) {
         if (title.isBlank()) return
-        
+
         _selectedGoalList.value?.let { currentList ->
             viewModelScope.launch {
                 try {
-                    // Создаем новую задачу локально для оптимистичного обновления
-                    val newTaskId = java.util.UUID.randomUUID().toString()
-                    val currentDate = java.util.Date()
+                    // Оптимистичное обновление UI
                     val newTask = com.example.khatmusalawattime.domain.model.Task(
-                        id = newTaskId,
+                        id = java.util.UUID.randomUUID().toString(),
                         title = title,
                         isCompleted = false,
-                        createdAt = currentDate,
-                        updatedAt = currentDate
+                        createdAt = java.util.Date(),
+                        updatedAt = java.util.Date()
                     )
-                    
-                    // Создаем обновленный список с новой задачей
-                    val optimisticList = currentList.copy(
-                        tasks = currentList.tasks + newTask
-                    )
-                    
-                    // Сразу обновляем UI для мгновенной реакции
+                    val optimisticList = currentList.copy(tasks = currentList.tasks + newTask)
                     _selectedGoalList.value = optimisticList
-                    
-                    // Обновляем в общем списке для синхронизации
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == currentList.id) optimisticList
-                            else list
-                        }
-                    }
-                    
-                    // Триггерим первое обновление UI
-                    triggerSwipeReset()
-                    
-                    // Фактическое добавление в базу данных
-                    val updatedList = addTaskUseCase(title, currentList)
-                    
-                    // Обновляем данные после получения результата из базы
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == updatedList.id) updatedList
-                            else list
-                        }
-                    }
-                    
-                    // Устанавливаем выбранный список из обновленного общего списка
-                    _selectedGoalList.value = _goalLists.value.find { it.id == updatedList.id }
-                    
                     _isAddingNewTask.value = false
-                    
-                    // Триггерим повторное обновление UI
                     triggerSwipeReset()
+
+                    // Сохраняем в БД — Flow автоматически обновит данные
+                    addTaskUseCase(title, currentList)
                 } catch (e: Exception) {
-                    // В случае ошибки восстанавливаем исходное состояние
-                    _selectedGoalList.value = currentList
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == currentList.id) currentList
-                            else list
-                        }
-                    }
                     _isAddingNewTask.value = false
                     triggerSwipeReset()
                 }
@@ -206,52 +137,37 @@ class NotesViewModel @Inject constructor(
         _selectedGoalList.value?.let { currentList ->
             viewModelScope.launch {
                 try {
-                    // Оптимистичное обновление UI (немедленное, до выполнения UseCase)
-                    val updatedTasks = currentList.tasks.map { task ->
-                        if (task.id == taskId) task.copy(isCompleted = !task.isCompleted)
-                        else task
+                    // Найти задачу чтобы узнать её текущий статус и linkedGoalId
+                    val task = currentList.tasks.find { it.id == taskId }
+                    val newCompletedState = !(task?.isCompleted ?: false)
+                    val linkedGoalId = task?.linkedGoalId
+
+                    // Оптимистичное обновление UI (немедленное)
+                    val updatedTasks = currentList.tasks.map { t ->
+                        if (t.id == taskId) t.copy(isCompleted = newCompletedState)
+                        else t
                     }
                     val optimisticList = currentList.copy(tasks = updatedTasks)
-                    
-                    // Сразу обновляем UI для мгновенной реакции
                     _selectedGoalList.value = optimisticList
-                    
-                    // Обновляем в общем списке для синхронизации
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == currentList.id) optimisticList
-                            else list
+                    triggerSwipeReset()
+
+                    // Сохраняем в БД — Flow автоматически обновит _goalLists и _selectedGoalList
+                    toggleTaskCompletionUseCase(taskId, currentList)
+
+                    // Синхронизируем с целями счётчика если есть связь
+                    if (linkedGoalId != null) {
+                        try {
+                            if (newCompletedState) {
+                                counterGoalRepository.completeGoal(linkedGoalId)
+                            }
+                            // Если задачу размечают как незавершённую,
+                            // цель не сбрасываем — это нелогично
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Ошибка синхронизации с целью: ${e.message}")
                         }
                     }
-                    
-                    // Триггерим первое обновление UI
-                    triggerSwipeReset()
-                    
-                    // Выполняем фактическое обновление в базе данных
-                    val updatedList = toggleTaskCompletionUseCase(taskId, currentList)
-                    
-                    // Обновляем данные после получения результата из базы
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == updatedList.id) updatedList
-                            else list
-                        }
-                    }
-                    
-                    // Устанавливаем выбранный список из обновленного общего списка
-                    _selectedGoalList.value = _goalLists.value.find { it.id == updatedList.id }
-                    
-                    // Триггерим повторное обновление UI
-                    triggerSwipeReset()
                 } catch (e: Exception) {
-                    // В случае ошибки восстанавливаем исходное состояние
-                    _selectedGoalList.value = currentList
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == currentList.id) currentList
-                            else list
-                        }
-                    }
+                    // В случае ошибки Flow восстановит данные из БД
                     triggerSwipeReset()
                 }
             }
@@ -260,56 +176,21 @@ class NotesViewModel @Inject constructor(
 
     fun updateTaskTitle(taskId: String, newTitle: String) {
         if (newTitle.isBlank()) return
-        
+
         _selectedGoalList.value?.let { currentList ->
             viewModelScope.launch {
                 try {
-                    // Оптимистичное обновление названия задачи
+                    // Оптимистичное обновление UI
                     val updatedTasks = currentList.tasks.map { task ->
                         if (task.id == taskId) task.copy(title = newTitle)
                         else task
                     }
-                    val optimisticList = currentList.copy(tasks = updatedTasks)
-                    
-                    // Сразу обновляем UI для мгновенной реакции
-                    _selectedGoalList.value = optimisticList
-                    
-                    // Обновляем в общем списке для синхронизации
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == currentList.id) optimisticList
-                            else list
-                        }
-                    }
-                    
-                    // Триггерим первое обновление UI
+                    _selectedGoalList.value = currentList.copy(tasks = updatedTasks)
                     triggerSwipeReset()
-                    
-                    // Фактическое обновление в базе данных
-                    val updatedList = updateTaskTitleUseCase(taskId, newTitle, currentList)
-                    
-                    // Обновляем данные после получения результата из базы
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == updatedList.id) updatedList
-                            else list
-                        }
-                    }
-                    
-                    // Устанавливаем выбранный список из обновленного общего списка
-                    _selectedGoalList.value = _goalLists.value.find { it.id == updatedList.id }
-                    
-                    // Триггерим повторное обновление UI
-                    triggerSwipeReset()
+
+                    // Сохраняем в БД — Flow автоматически обновит данные
+                    updateTaskTitleUseCase(taskId, newTitle, currentList)
                 } catch (e: Exception) {
-                    // В случае ошибки восстанавливаем исходное состояние
-                    _selectedGoalList.value = currentList
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == currentList.id) currentList
-                            else list
-                        }
-                    }
                     triggerSwipeReset()
                 }
             }
@@ -320,49 +201,14 @@ class NotesViewModel @Inject constructor(
         _selectedGoalList.value?.let { currentList ->
             viewModelScope.launch {
                 try {
-                    // Оптимистичное удаление задачи из списка
+                    // Оптимистичное обновление UI
                     val updatedTasks = currentList.tasks.filter { it.id != taskId }
-                    val optimisticList = currentList.copy(tasks = updatedTasks)
-                    
-                    // Сразу обновляем UI для мгновенной реакции
-                    _selectedGoalList.value = optimisticList
-                    
-                    // Обновляем в общем списке для синхронизации
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == currentList.id) optimisticList
-                            else list
-                        }
-                    }
-                    
-                    // Триггерим первое обновление UI
+                    _selectedGoalList.value = currentList.copy(tasks = updatedTasks)
                     triggerSwipeReset()
-                    
-                    // Фактическое удаление в базе данных
-                    val updatedList = deleteTaskUseCase(taskId, currentList)
-                    
-                    // Обновляем данные после получения результата из базы
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == updatedList.id) updatedList
-                            else list
-                        }
-                    }
-                    
-                    // Устанавливаем выбранный список из обновленного общего списка
-                    _selectedGoalList.value = _goalLists.value.find { it.id == updatedList.id }
-                    
-                    // Триггерим повторное обновление UI
-                    triggerSwipeReset()
+
+                    // Удаляем из БД — Flow автоматически обновит данные
+                    deleteTaskUseCase(taskId, currentList)
                 } catch (e: Exception) {
-                    // В случае ошибки восстанавливаем исходное состояние
-                    _selectedGoalList.value = currentList
-                    _goalLists.update { currentLists ->
-                        currentLists.map { list ->
-                            if (list.id == currentList.id) currentList
-                            else list
-                        }
-                    }
                     triggerSwipeReset()
                 }
             }
@@ -371,40 +217,20 @@ class NotesViewModel @Inject constructor(
 
     fun updateListTitle(listId: String, newTitle: String) {
         if (newTitle.isBlank()) return
-        
-        // Сохраняем текущие списки для восстановления в случае ошибки
-        val currentLists = _goalLists.value
-        val currentSelectedList = _selectedGoalList.value
-        
+
         viewModelScope.launch {
             try {
-                // Оптимистичное обновление названия списка
-                _goalLists.update { lists ->
-                    lists.map { list ->
-                        if (list.id == listId) list.copy(title = newTitle)
-                        else list
-                    }
-                }
-                
-                // Если это выбранный список, обновляем его из _goalLists для синхронизации
+                // Оптимистичное обновление UI
                 _selectedGoalList.value?.let { currentList ->
                     if (currentList.id == listId) {
-                        _selectedGoalList.value = _goalLists.value.find { it.id == listId }
+                        _selectedGoalList.value = currentList.copy(title = newTitle)
                     }
                 }
-                
-                // Триггерим первое обновление UI
                 triggerSwipeReset()
-                
-                // Фактическое обновление в базе данных
+
+                // Сохраняем в БД — Flow автоматически обновит данные
                 updateGoalListTitleUseCase(listId, newTitle)
-                
-                // Триггерим повторное обновление UI после операции с базой
-                triggerSwipeReset()
             } catch (e: Exception) {
-                // В случае ошибки восстанавливаем исходное состояние
-                _goalLists.value = currentLists
-                _selectedGoalList.value = currentSelectedList
                 triggerSwipeReset()
             }
         }
@@ -413,21 +239,16 @@ class NotesViewModel @Inject constructor(
     fun deleteList(listId: String) {
         viewModelScope.launch {
             try {
-                deleteGoalListUseCase(listId)
-                
-                // Немедленно удаляем список из общего состояния
-                _goalLists.update { currentLists ->
-                    currentLists.filter { it.id != listId }
-                }
-                
+                // Оптимистичное обновление UI
                 if (_selectedGoalList.value?.id == listId) {
                     _selectedGoalList.value = null
                 }
-                
-                // Сбрасываем состояние свайпа после удаления
                 triggerSwipeReset()
+
+                // Удаляем из БД — Flow автоматически обновит _goalLists
+                deleteGoalListUseCase(listId)
             } catch (e: Exception) {
-                // Обработка ошибок
+                triggerSwipeReset()
             }
         }
     }

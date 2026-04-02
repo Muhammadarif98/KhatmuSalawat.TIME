@@ -7,5 +7,9 @@ data class Task(
     val title: String,
     val isCompleted: Boolean = false,
     val createdAt: Date = Date(),
-    val updatedAt: Date = Date()
-)
+    val updatedAt: Date = Date(),
+    val linkedGoalId: String? = null
+) {
+    val isLinkedToGoal: Boolean
+        get() = linkedGoalId != null
+}

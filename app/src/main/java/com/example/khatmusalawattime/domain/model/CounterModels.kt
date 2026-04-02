@@ -101,28 +101,28 @@ object AzkarPreset {
     val items = listOf(
         ZikrItem(
             id = "azkar_istighfar",
-            name = "Истигъфар",
+            name = "ИСТИГЪФАР",
             arabicText = "أَسْتَغْفِرُ اللهَ",
             targetCount = 10,
             color = 0xFFE57373 // красноватый
         ),
         ZikrItem(
             id = "azkar_subhanallah",
-            name = "Субх1аналлагь",
+            name = "СУБХ1АНАЛЛАГЬ",
             arabicText = "سُبْحَانَ اللهِ",
             targetCount = 33,
             color = 0xFF81C784 // зеленоватый
         ),
         ZikrItem(
             id = "azkar_alhamdulillah",
-            name = "Альх1амдулиллагь",
+            name = "АЛЬХ1АМДУЛИЛЛАГЬ",
             arabicText = "الْحَمْدُ لِلَّهِ",
             targetCount = 33,
             color = 0xFF64B5F6 // голубоватый
         ),
         ZikrItem(
             id = "azkar_allahuakbar",
-            name = "Аллагьу акбар",
+            name = "АЛЛАГЬУ АКБАР",
             arabicText = "اللهُ أَكْبَرُ",
             targetCount = 34,
             color = 0xFFBA68C8 // фиолетовый
@@ -137,21 +137,21 @@ object WirdPreset {
     fun getItems(countPerZikr: Int) = listOf(
         ZikrItem(
             id = "wird_istighfar",
-            name = "Истигъфар",
+            name = "ИСТИГЪФАР",
             arabicText = "أَسْتَغْفِرُ اللهَ الَّذِي لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ وَأَتُوبُ إِلَيْهِ",
             targetCount = countPerZikr,
             color = 0xFFFF8A65 // оранжевый
         ),
         ZikrItem(
             id = "wird_salavat",
-            name = "Салават",
+            name = "САЛАВАТ",
             arabicText = "اللَّهُمَّ صَلِّ عَلَى سَيِّدِنَا مُحَمَّدٍ عَبْدِكَ وَنَبِيِّكَ وَرَسُولِكَ النَّبِيِّ الْأُمِّيِّ وَعَلَى آلِهِ وَصَحْبِهِ وَسَلِّمْ",
             targetCount = countPerZikr,
             color = 0xFF81C784 // зелёный
         ),
         ZikrItem(
             id = "wird_tahlil",
-            name = "Ляя иляягьа иллаЛлаагь",
+            name = "ЛЯЯ ИЛЯЯГЬА ИЛЛАЛЛААГЬ",
             arabicText = "لَا إِلَهَ إِلَّا اللهُ",
             targetCount = countPerZikr,
             color = 0xFF9575CD // фиолетовый

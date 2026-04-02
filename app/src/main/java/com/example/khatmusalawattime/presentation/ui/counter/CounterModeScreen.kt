@@ -1,6 +1,18 @@
 package com.example.khatmusalawattime.presentation.ui.counter
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,8 +51,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.paint
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -50,28 +64,40 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.khatmusalawattime.R
 import com.example.khatmusalawattime.domain.model.CounterMode
+import com.example.khatmusalawattime.domain.model.CounterStats
 import com.example.khatmusalawattime.domain.model.WirdPreset
+import com.example.khatmusalawattime.presentation.ui.counter.components.CounterStatsSection
 
 @Composable
 fun CounterModeScreen(
     onNavigateBack: () -> Unit,
     onModeSelected: (CounterMode) -> Unit,
-    onCustomSetup: () -> Unit
+    onCustomSetup: () -> Unit,
+    stats: CounterStats = CounterStats(),
+    statsExpanded: Boolean = false,
+    onToggleStatsExpanded: () -> Unit = {}
 ) {
-    val russoOneFamily = FontFamily(Font(R.font.russo_one_regular))
-    val cardBgColor = Color(0xFFFAF7F2)
-    val textColor = Color(0xFF4A3D2A)
-    val accentColor = Color(0xFF7C5F23)
+    // Кэшируем шрифт и цвета
+    val russoOneFamily = remember { FontFamily(Font(R.font.russo_one_regular)) }
+    val cardBgColor = remember { Color(0xFFFAF7F2) }
+    val textColor = remember { Color(0xFF4A3D2A) }
+    val accentColor = remember { Color(0xFF7C5F23) }
 
-    val borderGradient = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFF4DBAD),
-            Color(0xFFFDFBCC),
-            Color(0xFFF4DBAD)
+    // Кэшируем градиенты
+    val borderGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFF4DBAD),
+                Color(0xFFFDFBCC),
+                Color(0xFFF4DBAD)
+            )
         )
-    )
+    }
 
-    var selectedWirdCount by remember { mutableIntStateOf(100) }
+    // Загружаем сохранённое значение wird count
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("counter_mode_prefs", android.content.Context.MODE_PRIVATE) }
+    var selectedWirdCount by remember { mutableIntStateOf(prefs.getInt("wird_count", 100)) }
     var showWirdOptions by remember { mutableStateOf(false) }
 
     Box(
@@ -123,6 +149,13 @@ fun CounterModeScreen(
                 )
             }
 
+            // Секция статистики
+            CounterStatsSection(
+                stats = stats,
+                isExpanded = statsExpanded,
+                onToggle = onToggleStatsExpanded
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // Mode cards
@@ -143,7 +176,7 @@ fun CounterModeScreen(
             // 2. Azkar mode
             ModeCard(
                 title = "Азкары",
-                description = "Истигъфар (10) → Субх1аналлагь (33) → Альх1амдулиллагь (33) → Аллагьу акбар (34)",
+                description = "ИСТИГЪФАР (10) → СУБХ1АНАЛЛАГЬ (33) → АЛЬХ1АМДУЛИЛЛАГЬ (33) → АЛЛАГЬУ АКБАР (34)",
                 icon = Icons.Default.Star,
                 iconColor = Color(0xFF81C784),
                 borderGradient = borderGradient,
@@ -157,7 +190,7 @@ fun CounterModeScreen(
             // 3. Wird mode with options
             ModeCardWithOptions(
                 title = "Вирды",
-                description = "Истигъфар → Салават → Ляя иляягьа иллаЛлаагь",
+                description = "ИСТИГЪФАР → САЛАВАТ → ЛЯЯ ИЛЯЯГЬА ИЛЛАЛЛААГЬ",
                 icon = Icons.Default.Check,
                 iconColor = Color(0xFFFFB74D),
                 borderGradient = borderGradient,
@@ -168,6 +201,8 @@ fun CounterModeScreen(
                 selectedCount = selectedWirdCount,
                 onCountSelected = { count ->
                     selectedWirdCount = count
+                    // Сохраняем выбор
+                    prefs.edit().putInt("wird_count", count).apply()
                     onModeSelected(CounterMode.Wird(count))
                 }
             )
@@ -266,13 +301,28 @@ private fun ModeCardWithOptions(
     selectedCount: Int,
     onCountSelected: (Int) -> Unit
 ) {
+    // Анимация поворота стрелки
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "arrowRotation"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .border(2.dp, borderGradient, RoundedCornerShape(20.dp))
             .background(cardBgColor.copy(alpha = 0.95f))
-            .animateContentSize()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -318,49 +368,84 @@ private fun ModeCardWithOptions(
                     )
                 }
 
+                // Анимированная стрелка
                 Text(
-                    text = if (expanded) "▲" else "▼",
+                    text = "▼",
                     fontSize = 16.sp,
-                    color = textColor.copy(alpha = 0.5f)
+                    color = textColor.copy(alpha = 0.5f),
+                    modifier = Modifier.graphicsLayer {
+                        rotationZ = arrowRotation
+                    }
                 )
             }
 
-            if (expanded) {
-                Spacer(modifier = Modifier.height(16.dp))
+            // Выдвижная секция с красивой анимацией
+            AnimatedVisibility(
+                visible = expanded,
+                enter = slideInVertically(
+                    initialOffsetY = { -it / 2 },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) + expandVertically(
+                    expandFrom = Alignment.Top,
+                    animationSpec = tween(300)
+                ) + fadeIn(animationSpec = tween(300)),
+                exit = slideOutVertically(
+                    targetOffsetY = { -it / 2 },
+                    animationSpec = tween(200)
+                ) + shrinkVertically(
+                    shrinkTowards = Alignment.Top,
+                    animationSpec = tween(200)
+                ) + fadeOut(animationSpec = tween(150))
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                Text(
-                    text = "Выберите количество:",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = textColor.copy(alpha = 0.8f)
-                )
+                    Text(
+                        text = "Выберите количество:",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = textColor.copy(alpha = 0.8f)
+                    )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    WirdPreset.availableCounts.forEach { count ->
-                        WirdCountChip(
-                            count = count,
-                            isSelected = count == selectedCount,
-                            textColor = textColor,
-                            accentColor = iconColor,
-                            onClick = { onCountSelected(count) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        WirdPreset.availableCounts.forEach { count ->
+                            WirdCountChip(
+                                count = count,
+                                isSelected = count == selectedCount,
+                                textColor = textColor,
+                                accentColor = iconColor,
+                                onClick = { onCountSelected(count) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Информационная подсказка с градиентом
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(iconColor.copy(alpha = 0.1f))
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Каждый зикр по $selectedCount раз = ${selectedCount * 3} всего",
+                            fontSize = 12.sp,
+                            color = textColor.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Каждый зикр по $selectedCount раз = ${selectedCount * 3} всего",
-                    fontSize = 12.sp,
-                    color = textColor.copy(alpha = 0.6f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
     }
@@ -374,24 +459,57 @@ private fun WirdCountChip(
     accentColor: Color,
     onClick: () -> Unit
 ) {
-    val bgColor = if (isSelected) accentColor else Color.Transparent
-    val borderColor = if (isSelected) accentColor else textColor.copy(alpha = 0.3f)
-    val chipTextColor = if (isSelected) Color.White else textColor
+    // Анимация цветов
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) accentColor else Color.Transparent,
+        animationSpec = tween(200),
+        label = "bgColor"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isSelected) accentColor else textColor.copy(alpha = 0.3f),
+        animationSpec = tween(200),
+        label = "borderColor"
+    )
+    val chipTextColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else textColor,
+        animationSpec = tween(200),
+        label = "chipTextColor"
+    )
 
+    // Анимация масштаба при выборе — уменьшена для избежания наложения
+    val scale by animateFloatAsState(
+        targetValue = if (isSelected) 1.05f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+
+    // Внешний контейнер для отступов между чипами
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .border(1.5.dp, borderColor, RoundedCornerShape(12.dp))
-            .background(bgColor)
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier.padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = count.toString(),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = chipTextColor
-        )
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(RoundedCornerShape(12.dp))
+                .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+                .background(bgColor)
+                .clickable { onClick() }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = count.toString(),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = chipTextColor
+            )
+        }
     }
 }

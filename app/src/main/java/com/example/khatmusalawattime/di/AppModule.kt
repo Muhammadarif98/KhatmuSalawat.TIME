@@ -4,25 +4,28 @@ import android.content.Context
 import androidx.room.Room
 import com.example.khatmusalawattime.data.backup.BackupManager
 import com.example.khatmusalawattime.data.local.dao.CounterDao
+import com.example.khatmusalawattime.data.local.dao.CounterGoalDao
+import com.example.khatmusalawattime.data.local.dao.CounterHistoryDao
 import com.example.khatmusalawattime.data.local.dao.NoteDao
 import com.example.khatmusalawattime.data.local.database.AppDatabase
+import com.example.khatmusalawattime.data.repository.CounterGoalRepositoryImpl
+import com.example.khatmusalawattime.data.repository.CounterHistoryRepositoryImpl
 import com.example.khatmusalawattime.data.repository.CounterRepositoryImpl
-import com.example.khatmusalawattime.data.repository.NoteRepositoryImpl
 import com.example.khatmusalawattime.data.repository.ReminderRepositoryImpl
+import com.example.khatmusalawattime.domain.repository.CounterGoalRepository
+import com.example.khatmusalawattime.domain.repository.CounterHistoryRepository
 import com.example.khatmusalawattime.domain.repository.CounterRepository
-import com.example.khatmusalawattime.domain.repository.NoteRepository
 import com.example.khatmusalawattime.domain.repository.ReminderRepository
 import com.example.khatmusalawattime.domain.usecase.counter.CounterUseCases
+import com.example.khatmusalawattime.domain.usecase.counter.CreateCounterGoalUseCase
+import com.example.khatmusalawattime.domain.usecase.counter.DeleteCounterGoalUseCase
+import com.example.khatmusalawattime.domain.usecase.counter.GetActiveGoalsUseCase
+import com.example.khatmusalawattime.domain.usecase.counter.GetCounterStatsUseCase
 import com.example.khatmusalawattime.domain.usecase.counter.GetCounterUseCase
+import com.example.khatmusalawattime.domain.usecase.counter.RecordCounterSessionUseCase
+import com.example.khatmusalawattime.domain.usecase.counter.ResetGoalProgressUseCase
 import com.example.khatmusalawattime.domain.usecase.counter.UpdateCounterUseCase
-import com.example.khatmusalawattime.domain.usecase.note.AddNoteListUseCase
-import com.example.khatmusalawattime.domain.usecase.note.AddNoteUseCase
-import com.example.khatmusalawattime.domain.usecase.note.DeleteNoteUseCase
-import com.example.khatmusalawattime.domain.usecase.note.GetAllNoteListsUseCase
-import com.example.khatmusalawattime.domain.usecase.note.GetNotesByListUseCase
-import com.example.khatmusalawattime.domain.usecase.note.NoteUseCases
-import com.example.khatmusalawattime.domain.usecase.note.ToggleNoteCompletionUseCase
-import com.example.khatmusalawattime.domain.usecase.note.UpdateNoteUseCase
+import com.example.khatmusalawattime.domain.usecase.counter.UpdateGoalProgressUseCase
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -44,20 +47,33 @@ object AppModule {
             AppDatabase::class.java,
             "khatmusalawat_db"
         )
+        .addMigrations(AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4)
         .fallbackToDestructiveMigration()
         .build()
     }
-    
+
     @Provides
     @Singleton
     fun provideCounterDao(database: AppDatabase): CounterDao {
         return database.counterDao()
     }
-    
+
     @Provides
     @Singleton
     fun provideNoteDao(database: AppDatabase): NoteDao {
         return database.noteDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideCounterHistoryDao(database: AppDatabase): CounterHistoryDao {
+        return database.counterHistoryDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideCounterGoalDao(database: AppDatabase): CounterGoalDao {
+        return database.counterGoalDao()
     }
     
     // Gson (для парсинга JSON)
@@ -73,42 +89,48 @@ object AppModule {
         gson: Gson
     ): ReminderRepository = ReminderRepositoryImpl(context, gson)
     
-    // Репозиторий для работы с заметками
-    @Provides
-    @Singleton
-    fun provideNoteRepository(noteDao: NoteDao): NoteRepository {
-        return NoteRepositoryImpl(noteDao)
-    }
-    
-    // Use cases для заметок
-    @Provides
-    @Singleton
-    fun provideNoteUseCases(repository: NoteRepository): NoteUseCases {
-        return NoteUseCases(
-            getAllNoteLists = GetAllNoteListsUseCase(repository),
-            getNotesByList = GetNotesByListUseCase(repository),
-            addNoteList = AddNoteListUseCase(repository),
-            addNote = AddNoteUseCase(repository),
-            updateNote = UpdateNoteUseCase(repository),
-            deleteNote = DeleteNoteUseCase(repository),
-            toggleNoteCompletion = ToggleNoteCompletionUseCase(repository)
-        )
-    }
-    
     // Репозиторий для счетчика
     @Provides
     @Singleton
     fun provideCounterRepository(counterDao: CounterDao): CounterRepository {
         return CounterRepositoryImpl(counterDao)
     }
-    
+
+    // Репозиторий для истории счётчика
+    @Provides
+    @Singleton
+    fun provideCounterHistoryRepository(
+        historyDao: CounterHistoryDao,
+        gson: Gson
+    ): CounterHistoryRepository {
+        return CounterHistoryRepositoryImpl(historyDao, gson)
+    }
+
+    // Репозиторий для целей счётчика
+    @Provides
+    @Singleton
+    fun provideCounterGoalRepository(goalDao: CounterGoalDao): CounterGoalRepository {
+        return CounterGoalRepositoryImpl(goalDao)
+    }
+
     // Use cases для счетчика
     @Provides
     @Singleton
-    fun provideCounterUseCases(repository: CounterRepository): CounterUseCases {
+    fun provideCounterUseCases(
+        counterRepository: CounterRepository,
+        historyRepository: CounterHistoryRepository,
+        goalRepository: CounterGoalRepository
+    ): CounterUseCases {
         return CounterUseCases(
-            getCounter = GetCounterUseCase(repository),
-            updateCounter = UpdateCounterUseCase(repository)
+            getCounter = GetCounterUseCase(counterRepository),
+            updateCounter = UpdateCounterUseCase(counterRepository),
+            recordSession = RecordCounterSessionUseCase(historyRepository),
+            getStats = GetCounterStatsUseCase(historyRepository),
+            createGoal = CreateCounterGoalUseCase(goalRepository),
+            updateGoalProgress = UpdateGoalProgressUseCase(goalRepository),
+            getActiveGoals = GetActiveGoalsUseCase(goalRepository),
+            deleteGoal = DeleteCounterGoalUseCase(goalRepository),
+            resetGoalProgress = ResetGoalProgressUseCase(goalRepository)
         )
     }
 
@@ -118,8 +140,10 @@ object AppModule {
         @ApplicationContext context: Context,
         noteDao: NoteDao,
         counterDao: CounterDao,
+        counterHistoryDao: CounterHistoryDao,
+        counterGoalDao: CounterGoalDao,
         gson: Gson
     ): BackupManager {
-        return BackupManager(context, noteDao, counterDao, gson)
+        return BackupManager(context, noteDao, counterDao, counterHistoryDao, counterGoalDao, gson)
     }
 }

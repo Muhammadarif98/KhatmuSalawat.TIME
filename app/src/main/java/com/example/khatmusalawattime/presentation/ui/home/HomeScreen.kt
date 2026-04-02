@@ -6,6 +6,13 @@ import android.content.ComponentName
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +21,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,9 +34,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,16 +55,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.khatmusalawattime.R
 import com.example.khatmusalawattime.domain.model.Location
+import com.example.khatmusalawattime.presentation.theme.RussoOneFamily
 import com.example.khatmusalawattime.presentation.ui.components.AnimateContent
 import com.example.khatmusalawattime.presentation.widget.TimeWidgetProvider
 import java.time.DayOfWeek
@@ -85,6 +94,20 @@ fun HomeScreen(
     var showInfoDialog by remember { mutableStateOf(false) }
     var locationExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    // Кэшируем цвета и градиенты
+    val textColor = remember { Color(0xFF604D2E) }
+    val bgColor = remember { Color(0xFFF1E4D1) }
+    val infoBgColor = remember { Color(0x40F1E4D1) }
+    val borderGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFF4DBAD),
+                Color(0xFFFDFBCC),
+                Color(0xFFF4DBAD)
+            )
+        )
+    }
 
     if (showInfoDialog) {
         InfoDialog(onDismiss = { showInfoDialog = false })
@@ -133,25 +156,15 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Кнопка добавления виджета (слева)
-            val widgetBorderGradient = Brush.linearGradient(
-                colors = listOf(
-                    Color(0xFFF4DBAD),
-                    Color(0xFFFDFBCC),
-                    Color(0xFFF4DBAD)
-                )
-            )
-            val widgetTextColor = Color(0xFF604D2E)
-            val widgetBgColor = Color(0xFFF1E4D1)
-
             Row(
                 modifier = Modifier
                     .border(
                         width = 2.dp,
-                        brush = widgetBorderGradient,
+                        brush = borderGradient,
                         shape = RoundedCornerShape(16.dp)
                     )
                     .clip(RoundedCornerShape(16.dp))
-                    .background(widgetBgColor.copy(alpha = 0.85f))
+                    .background(bgColor.copy(alpha = 0.85f))
                     .clickable {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             val appWidgetManager = AppWidgetManager.getInstance(context)
@@ -171,7 +184,7 @@ fun HomeScreen(
                 Icon(
                     imageVector = Icons.Filled.Add,
                     contentDescription = null,
-                    tint = widgetTextColor,
+                    tint = textColor,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -179,8 +192,8 @@ fun HomeScreen(
                     text = "Виджет",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    fontFamily = FontFamily.Serif,
-                    color = widgetTextColor
+                    fontFamily = RussoOneFamily,
+                    color = textColor
                 )
             }
 
@@ -189,93 +202,37 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Dropdown выбора локации
-                Box {
-                    val borderGradient = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFFF4DBAD),
-                            Color(0xFFFDFBCC),
-                            Color(0xFFF4DBAD)
+                // Кнопка выбора локации (dropdown открывается отдельно)
+                Row(
+                    modifier = Modifier
+                        .border(
+                            width = 2.dp,
+                            brush = borderGradient,
+                            shape = RoundedCornerShape(16.dp)
                         )
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(bgColor.copy(alpha = 0.85f))
+                        .clickable { locationExpanded = !locationExpanded }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = currentLocation.displayName,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = RussoOneFamily,
+                        color = textColor
                     )
-                    val textColor = Color(0xFF604D2E)
-                    val bgColor = Color(0xFFF1E4D1)
-
-                    Row(
-                        modifier = Modifier
-                            .border(
-                                width = 2.dp,
-                                brush = borderGradient,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(bgColor.copy(alpha = 0.85f))
-                            .clickable { locationExpanded = true }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = currentLocation.displayName,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            fontFamily = FontFamily.Serif,
-                            color = textColor
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Filled.ArrowDropDown,
-                            contentDescription = null,
-                            tint = textColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = locationExpanded,
-                        onDismissRequest = { locationExpanded = false },
-                        modifier = Modifier
-                            .border(
-                                width = 2.dp,
-                                brush = borderGradient,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(bgColor)
-                    ) {
-                        Location.entries.forEachIndexed { index, location ->
-                            val isSelected = location == currentLocation
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .then(
-                                        if (isSelected) Modifier.background(Color(0x20604D2E))
-                                        else Modifier
-                                    )
-                                    .clickable {
-                                        viewModel.setLocation(location)
-                                        locationExpanded = false
-                                    }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                            ) {
-                                Text(
-                                    text = location.displayName,
-                                    fontSize = 15.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    fontFamily = FontFamily.Serif,
-                                    color = textColor
-                                )
-                            }
-                            if (index < Location.entries.size - 1) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp)
-                                        .height(1.dp)
-                                        .background(borderGradient)
-                                )
-                            }
-                        }
-                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = if (locationExpanded)
+                            Icons.Filled.KeyboardArrowUp
+                        else
+                            Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = textColor,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
 
                 // Кнопка инфо
@@ -283,16 +240,69 @@ fun HomeScreen(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color(0x40F1E4D1))
+                        .background(infoBgColor)
                         .clickable { showInfoDialog = true },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Info,
                         contentDescription = "Информация",
-                        tint = Color(0xFF604D2E),
+                        tint = textColor,
                         modifier = Modifier.size(20.dp)
                     )
+                }
+            }
+        }
+
+        // Dropdown overlay - вынесен на корневой уровень чтобы не сдвигать элементы
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 76.dp, end = 56.dp)
+                .zIndex(10f)
+        ) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = locationExpanded,
+                enter = expandVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ) + fadeIn(animationSpec = tween(150)),
+                exit = shrinkVertically(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                ) + fadeOut(animationSpec = tween(100))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .width(IntrinsicSize.Max)
+                        .border(
+                            width = 2.dp,
+                            brush = borderGradient,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(bgColor)
+                ) {
+                    Location.entries.forEach { location ->
+                        Text(
+                            text = location.displayName,
+                            fontSize = 14.sp,
+                            fontWeight = if (location == currentLocation) FontWeight.Bold else FontWeight.Medium,
+                            fontFamily = RussoOneFamily,
+                            color = textColor,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setLocation(location)
+                                    locationExpanded = false
+                                }
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        )
+                    }
                 }
             }
         }
@@ -339,14 +349,19 @@ fun HomeScreen(
 
 @Composable
 private fun InfoDialog(onDismiss: () -> Unit) {
-    val borderGradient = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFF4DBAD),
-            Color(0xFFFDFBCC),
-            Color(0xFFF4DBAD)
+    // Кэшируем цвета и градиенты
+    val borderGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFF4DBAD),
+                Color(0xFFFDFBCC),
+                Color(0xFFF4DBAD)
+            )
         )
-    )
-    val textColor = Color(0xFF604D2E)
+    }
+    val textColor = remember { Color(0xFF604D2E) }
+    val bgColor = remember { Color(0xFFF1E4D1) }
+    val buttonBgColor = remember { Color(0x33604D2E) }
 
     Dialog(onDismissRequest = onDismiss) {
         Box(
@@ -358,7 +373,7 @@ private fun InfoDialog(onDismiss: () -> Unit) {
                     shape = RoundedCornerShape(28.dp)
                 )
                 .clip(RoundedCornerShape(28.dp))
-                .background(Color(0xFFF1E4D1))
+                .background(bgColor)
                 .padding(24.dp)
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -366,7 +381,7 @@ private fun InfoDialog(onDismiss: () -> Unit) {
                     text = "Хатму/Салават",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = RussoOneFamily,
                     color = textColor
                 )
 
@@ -375,7 +390,7 @@ private fun InfoDialog(onDismiss: () -> Unit) {
                 Text(
                     text = "Приложение показывает время коллективного чтения Хатму и Салавата.\n\nВыберите локацию в верхнем меню:\n• Хунзах\n• Чиркей\n\nВ четверг — время Салавата\nВ пятницу — Шазалийский Хатму\nВ остальные дни — время Хатму",
                     fontSize = 15.sp,
-                    fontFamily = FontFamily.Serif,
+                    fontFamily = RussoOneFamily,
                     color = textColor,
                     textAlign = TextAlign.Center,
                     lineHeight = 22.sp
@@ -386,7 +401,7 @@ private fun InfoDialog(onDismiss: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0x33604D2E))
+                        .background(buttonBgColor)
                         .clickable { onDismiss() }
                         .padding(horizontal = 32.dp, vertical = 10.dp),
                     contentAlignment = Alignment.Center
@@ -395,7 +410,7 @@ private fun InfoDialog(onDismiss: () -> Unit) {
                         text = "Понятно",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Serif,
+                        fontFamily = RussoOneFamily,
                         color = textColor
                     )
                 }

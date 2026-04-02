@@ -1,23 +1,20 @@
 package com.example.khatmusalawattime.presentation.navigation
 
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import com.example.khatmusalawattime.presentation.ui.alarm.AlarmScreen
 import com.example.khatmusalawattime.presentation.ui.components.settings.SettingsPreferences
 import com.example.khatmusalawattime.presentation.ui.counter.CounterModeScreen
@@ -30,39 +27,48 @@ import com.example.khatmusalawattime.presentation.ui.onboarding.OnboardingScreen
 import com.example.khatmusalawattime.presentation.ui.settings.SettingsScreen
 
 /**
- * Главный экран приложения с навигацией
+ * Главный экран приложения с простой навигацией на основе состояния.
+ * Мгновенные переходы без анимаций — быстрее чем NavHost.
  */
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
-    val navController = rememberNavController()
 
     // Проверяем, показан ли онбординг
     val onboardingShown = remember { SettingsPreferences.loadOnboardingShown(context) }
-    val startDestination = if (onboardingShown) Route.Home.path else Route.Onboarding.path
+    val startScreen = if (onboardingShown) Screen.Home else Screen.Onboarding
 
-    // Получаем текущий маршрут
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    // Навигатор
+    val navigator = rememberAppNavigator(startScreen)
+
+    // Shared ViewModel для счётчика — создаём один раз
+    val counterViewModel: CounterViewModel = hiltViewModel()
+
+    // Обработка системной кнопки "Назад"
+    BackHandler(enabled = navigator.canGoBack()) {
+        navigator.navigateBack()
+    }
 
     // Определяем, должна ли отображаться нижняя навигация
-    val shouldShowBottomNav = when (currentRoute) {
-        Route.Alarm.path,
-        Route.Counter.path,
-        Route.CounterMode.path,
-        Route.CustomCounterSetup.path,
-        Route.Onboarding.path -> false
+    val shouldShowBottomNav = when (navigator.currentScreen) {
+        Screen.Alarm,
+        Screen.Counter,
+        Screen.CounterMode,
+        Screen.CustomCounterSetup,
+        Screen.Onboarding -> false
         else -> true
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        NavigationHost(
-            navController = navController,
-            startDestination = startDestination,
-            modifier = Modifier.fillMaxSize()
+        // Контент экрана — мгновенное переключение
+        ScreenContent(
+            screen = navigator.currentScreen,
+            navigator = navigator,
+            counterViewModel = counterViewModel
         )
 
+        // Нижняя навигация
         if (shouldShowBottomNav) {
             Box(
                 modifier = Modifier
@@ -70,9 +76,11 @@ fun MainScreen() {
                     .navigationBarsPadding()
                     .align(Alignment.BottomCenter)
             ) {
-                BottomNavigationBar(
-                    navController = navController,
-                    currentRoute = currentRoute
+                SimpleBottomNavigationBar(
+                    currentScreen = navigator.currentScreen,
+                    onScreenSelected = { screen ->
+                        navigator.navigateTo(screen)
+                    }
                 )
             }
         }
@@ -81,88 +89,82 @@ fun MainScreen() {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun NavigationHost(
-    navController: NavHostController,
-    startDestination: String = Route.Home.path,
-    modifier: Modifier = Modifier
+private fun ScreenContent(
+    screen: Screen,
+    navigator: AppNavigator,
+    counterViewModel: CounterViewModel
 ) {
-    // Shared ViewModel для счётчика
-    val counterViewModel: CounterViewModel = hiltViewModel()
-
-    NavHost(
-        navController = navController,
-        startDestination = startDestination,
-        modifier = modifier
-    ) {
-        // Онбординг
-        composable(Route.Onboarding.path) {
+    when (screen) {
+        Screen.Onboarding -> {
             OnboardingScreen(
                 onFinish = {
-                    navController.navigate(Route.Home.path) {
-                        popUpTo(Route.Onboarding.path) { inclusive = true }
-                    }
+                    navigator.navigateToAndClearStack(Screen.Home)
                 }
             )
         }
 
-        composable(Route.Home.path) {
+        Screen.Home -> {
             HomeScreen(
-                onNavigateToAlarm = { navController.navigate(Route.Alarm.path) },
-                onNavigateToCounter = { navController.navigate(Route.CounterMode.path) }
+                onNavigateToAlarm = { navigator.navigateTo(Screen.Alarm) },
+                onNavigateToCounter = { navigator.navigateTo(Screen.CounterMode) }
             )
         }
 
-        composable(Route.Notes.path) {
+        Screen.Notes -> {
             NotesScreen()
         }
 
-        composable(Route.Settings.path) {
+        Screen.Settings -> {
             SettingsScreen(
                 onNavigateToOnboarding = {
-                    navController.navigate(Route.Onboarding.path)
+                    navigator.navigateTo(Screen.Onboarding)
                 }
             )
         }
 
-        composable(Route.Alarm.path) {
-            AlarmScreen(onNavigateBack = { navController.navigateUp() })
+        Screen.Alarm -> {
+            AlarmScreen(
+                onNavigateBack = { navigator.navigateBack() }
+            )
         }
 
-        // Экран выбора режима счётчика
-        composable(Route.CounterMode.path) {
+        Screen.CounterMode -> {
+            val stats by counterViewModel.stats.collectAsState()
+            val statsExpanded by counterViewModel.statsExpanded.collectAsState()
+
             CounterModeScreen(
-                onNavigateBack = { navController.navigateUp() },
+                onNavigateBack = { navigator.navigateBack() },
                 onModeSelected = { mode ->
                     counterViewModel.setMode(mode)
-                    navController.navigate(Route.Counter.path)
+                    navigator.navigateTo(Screen.Counter)
                 },
                 onCustomSetup = {
-                    navController.navigate(Route.CustomCounterSetup.path)
-                }
+                    navigator.navigateTo(Screen.CustomCounterSetup)
+                },
+                stats = stats,
+                statsExpanded = statsExpanded,
+                onToggleStatsExpanded = { counterViewModel.toggleStatsExpanded() }
             )
         }
 
-        // Экран настройки кастомного режима
-        composable(Route.CustomCounterSetup.path) {
+        Screen.CustomCounterSetup -> {
             val savedItems = remember { counterViewModel.loadCustomItems() }
             CustomCounterSetupScreen(
-                onNavigateBack = { navController.navigateUp() },
+                onNavigateBack = { navigator.navigateBack() },
                 onStartCounter = { customMode ->
                     counterViewModel.setMode(customMode)
-                    navController.navigate(Route.Counter.path) {
-                        // Убираем CustomCounterSetup из стека, оставляем CounterMode
-                        popUpTo(Route.CounterMode.path) { inclusive = false }
-                    }
+                    // Переходим к Counter и убираем CustomCounterSetup из стека
+                    navigator.popUpTo(Screen.CounterMode, inclusive = false)
+                    navigator.navigateTo(Screen.Counter)
                 },
                 initialItems = savedItems
             )
         }
 
-        // Основной экран счётчика
-        composable(Route.Counter.path) {
+        Screen.Counter -> {
             CounterScreen(
                 viewModel = counterViewModel,
-                onNavigateBack = { navController.navigateUp() }
+                onNavigateBack = { navigator.navigateBack() }
             )
         }
     }

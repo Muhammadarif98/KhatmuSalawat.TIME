@@ -2,14 +2,19 @@ package com.example.khatmusalawattime.presentation.ui.notes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -18,13 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -32,19 +31,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.khatmusalawattime.presentation.theme.BlueAccent
 import com.example.khatmusalawattime.presentation.ui.notes.items.GoalListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,10 +61,20 @@ fun NotesScreen(
     val isAddingNewTask by viewModel.isAddingNewTask.collectAsState()
     val resetSwipeTrigger by viewModel.resetSwipeAnimation.collectAsState()
 
-    val backgroundColor = Color(0xFFECDCC3)
-    val surfaceColor = Color(0xFFDDCBB8)
-    val textColor = Color(0xFF2C2C2C)
-    val accentColor = BlueAccent
+    // Цвета в стиле экрана счётчика — кэшируем чтобы не создавать при каждой recomposition
+    val backgroundGradient = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFFF8F4E8),
+                Color(0xFFE8DCC8),
+                Color(0xFFD4C4A8)
+            )
+        )
+    }
+    val cardColor = remember { Color(0xFFFAF6F0) }
+    val textColor = remember { Color(0xFF3D2914) }
+    val secondaryTextColor = remember { Color(0xFF8B7355) }
+    val accentColor = remember { Color(0xFFD4A574) }
 
     // Состояние для редактирования списка прямо в элементе
     var editingListId by remember { mutableStateOf<String?>(null) }
@@ -86,27 +99,43 @@ fun NotesScreen(
 
     if (selectedGoalList == null) {
         // Главный экран со списком целей
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Цели", fontSize = 30.sp,
-                        color = textColor) },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = backgroundColor
-                    )
-                )
-            }
-        ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundGradient)
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(backgroundColor)
-                    .padding(paddingValues)
+                    .statusBarsPadding()
+                    .padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
-                // Поле для добавления нового списка
-                ListItem(
-                    headlineContent = {
-                        if (isAddingNewList) {
+                // Заголовок
+                Text(
+                    text = "Цели",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 20.dp)
+                )
+
+                // Карточка "Новый список"
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(cardColor)
+                        .clickable {
+                            if (!isAddingNewList) viewModel.toggleAddingNewList()
+                        }
+                        .padding(16.dp)
+                ) {
+                    if (isAddingNewList) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
                             BasicTextField(
                                 value = newListTitle,
                                 onValueChange = { newListTitle = it },
@@ -119,62 +148,78 @@ fun NotesScreen(
                                     onDone = {
                                         if (newListTitle.text.isNotBlank()) {
                                             viewModel.addNewList(newListTitle.text)
-                                            newListTitle =
-                                                TextFieldValue("", selection = TextRange(0))
+                                            newListTitle = TextFieldValue("", selection = TextRange(0))
                                             viewModel.toggleAddingNewList()
                                         }
                                     }
                                 ),
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .padding(end = 40.dp)
                                     .focusRequester(focusRequesterNewList),
                                 cursorBrush = SolidColor(accentColor)
                             )
-                        } else {
-                            Text(
-                                "Новый список",
-                                color = textColor,
-                                fontSize = 16.sp,
-                                modifier = Modifier.clickable { viewModel.toggleAddingNewList() }
-                            )
-                        }
-                    },
-                    trailingContent = {
-                        IconButton(onClick = {
-                            if (isAddingNewList) {
-                                if (newListTitle.text.isNotBlank()) {
-                                    viewModel.addNewList(newListTitle.text)
-                                    newListTitle = TextFieldValue("", selection = TextRange(0))
-                                }
-                                viewModel.toggleAddingNewList()
-                            } else {
-                                viewModel.toggleAddingNewList()
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(accentColor)
+                                    .clickable {
+                                        if (newListTitle.text.isNotBlank()) {
+                                            viewModel.addNewList(newListTitle.text)
+                                            newListTitle = TextFieldValue("", selection = TextRange(0))
+                                        }
+                                        viewModel.toggleAddingNewList()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Создать",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
-                        }) {
-                            Icon(
-                                imageVector = if (isAddingNewList) Icons.Default.Check else Icons.Default.Add,
-                                contentDescription = if (isAddingNewList) "Создать" else "Добавить список",
-                                tint = accentColor
-                            )
                         }
-                    },
-                    modifier = Modifier.height(70.dp),
-                    colors = ListItemDefaults.colors(containerColor = surfaceColor)
-                )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                text = "Новый список",
+                                color = secondaryTextColor,
+                                fontSize = 16.sp
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(accentColor),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = "Добавить",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
 
-                // Добавляем отступ
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Список целей
-                LazyColumn(
-                ) {
-                    itemsIndexed(goalLists) { index, goalList ->
+                LazyColumn {
+                    itemsIndexed(goalLists, key = { _, item -> item.id }) { index, goalList ->
                         GoalListItem(
                             goalList = goalList,
                             onItemClick = { viewModel.selectGoalList(goalList) },
-                            onEditClick = {
-                                editingListId = goalList.id
-                            },
+                            onEditClick = { editingListId = goalList.id },
                             onDeleteClick = { viewModel.deleteList(goalList.id) },
                             editingId = editingListId,
                             onSaveEdit = { newTitle ->
@@ -182,19 +227,19 @@ fun NotesScreen(
                                 editingListId = null
                             },
                             onCancelEdit = { editingListId = null },
-                            backgroundColor = surfaceColor,
+                            cardColor = cardColor,
                             textColor = textColor,
+                            secondaryTextColor = secondaryTextColor,
                             accentColor = accentColor,
                             resetSwipeTrigger = resetSwipeTrigger
                         )
 
-                        // Добавляем Spacer после каждого элемента, кроме последнего
                         if (index < goalLists.size - 1) {
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
                     }
                     item {
-                        Spacer(modifier = Modifier.height(78.dp))
+                        Spacer(modifier = Modifier.height(100.dp))
                     }
                 }
             }
@@ -206,9 +251,10 @@ fun NotesScreen(
                 goalList = goalList,
                 onBackClick = { viewModel.selectGoalList(null) },
                 viewModel = viewModel,
-                backgroundColor = backgroundColor,
-                surfaceColor = surfaceColor,
+                backgroundGradient = backgroundGradient,
+                cardColor = cardColor,
                 textColor = textColor,
+                secondaryTextColor = secondaryTextColor,
                 accentColor = accentColor
             )
         }

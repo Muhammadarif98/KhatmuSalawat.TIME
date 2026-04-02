@@ -1,5 +1,6 @@
 package com.example.khatmusalawattime.presentation.ui.counter
 
+import android.app.Activity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,9 +21,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -54,10 +59,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.khatmusalawattime.R
+import com.example.khatmusalawattime.domain.model.CounterGoal
 import com.example.khatmusalawattime.domain.model.CounterMode
 import com.example.khatmusalawattime.domain.model.CounterState
+import com.example.khatmusalawattime.presentation.ui.counter.components.AnimatedGoalPanel
+import com.example.khatmusalawattime.presentation.ui.counter.components.CounterDisplayPlate
+import com.example.khatmusalawattime.presentation.ui.counter.components.SetGoalDialog
 
 @Composable
 fun CounterScreen(
@@ -66,15 +76,34 @@ fun CounterScreen(
 ) {
     val counterState by viewModel.counterState.collectAsState()
     val count by viewModel.count.collectAsState()
+    val activeGoals by viewModel.activeGoals.collectAsState()
+    val selectedGoalIndex by viewModel.selectedGoalIndex.collectAsState()
+    val showGoalDialog by viewModel.showGoalDialog.collectAsState()
+
+    // Диалог создания цели
+    if (showGoalDialog) {
+        SetGoalDialog(
+            onDismiss = { viewModel.showGoalDialog(false) },
+            onConfirm = { title, targetCount, goalType ->
+                viewModel.createGoal(title, targetCount, goalType)
+            }
+        )
+    }
 
     when (counterState.mode) {
         is CounterMode.Free -> {
             FreeCounterScreen(
                 count = count,
+                goals = activeGoals,
+                selectedGoalIndex = selectedGoalIndex,
+                onGoalPageChanged = { index -> viewModel.selectGoal(index) },
                 onIncrement = { viewModel.increment() },
                 onDecrement = { viewModel.decrement() },
                 onReset = { viewModel.reset() },
-                onNavigateBack = onNavigateBack
+                onNavigateBack = onNavigateBack,
+                onShowGoalDialog = { viewModel.showGoalDialog(true) },
+                onDeleteGoal = { goalId -> viewModel.deleteGoal(goalId) },
+                onResetGoal = { goalId -> viewModel.resetGoalProgress(goalId) }
             )
         }
         else -> {
@@ -92,37 +121,85 @@ fun CounterScreen(
 @Composable
 private fun FreeCounterScreen(
     count: Int,
+    goals: List<CounterGoal>,
+    selectedGoalIndex: Int,
+    onGoalPageChanged: (Int) -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
     onReset: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onShowGoalDialog: () -> Unit,
+    onDeleteGoal: (String) -> Unit,
+    onResetGoal: (String) -> Unit
 ) {
-    val textColor = Color(0xFFFFFFFF)
+    // Кэшируем цвета
+    val textColor = remember { Color(0xFFFFFFFF) }
 
+    // Устанавливаем светлые иконки статус-бара (для тёмного фона)
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as? Activity)?.window
+        if (window != null) {
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+        }
+    }
+
+    // Основной контейнер с фоном (как на HomeScreen)
     Box(
         modifier = Modifier
-            .fillMaxSize()
             .paint(
-                painter = painterResource(id = R.drawable.counterback),
-                contentScale = ContentScale.Crop
+                painter = painterResource(id = R.drawable.free_counter_back),
+                contentScale = ContentScale.FillBounds
             )
+            .fillMaxSize()
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(371.dp))
+            // Кнопка установки цели (в углу)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .clickable { onShowGoalDialog() }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "Цель",
+                        color = textColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
 
-            Text(
-                text = count.toString(),
-                style = TextStyle(
-                    fontSize = 100.sp,
-                    fontFamily = FontFamily(Font(R.font.russo_one_regular)),
-                    fontWeight = FontWeight.ExtraBold,
-                    color = textColor
-                ),
-                textAlign = TextAlign.Center
+            // Выдвижная панель целей с каруселью
+            AnimatedGoalPanel(
+                goals = goals,
+                selectedIndex = selectedGoalIndex,
+                onPageChanged = onGoalPageChanged,
+                onDelete = onDeleteGoal,
+                onReset = onResetGoal
             )
+
+            // Верхний отступ (больше = счётчик ниже)
+            Spacer(modifier = Modifier.weight(3.5f))
+
+            // Плашка с цифрами
+            CounterDisplayPlate(
+                count = count,
+                plateHeight = 100.dp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             ClickableImageButton(
                 onClick = onIncrement,
@@ -134,14 +211,20 @@ private fun FreeCounterScreen(
                 contentDescription = "Увеличить счетчик"
             )
 
+            // Нижний отступ (меньше = счётчик ниже)
+            Spacer(modifier = Modifier.weight(0.4f))
+
+            // Нижние кнопки
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(horizontal = 32.dp, vertical = 24.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatefulImageButton(
                     onClick = onNavigateBack,
+                    modifier = Modifier.size(90.dp),
                     imageNormalRes = R.drawable.countbackbtn,
                     imagePressedRes = R.drawable.countbackpressedbtn,
                     contentDescription = "Назад"
@@ -149,6 +232,7 @@ private fun FreeCounterScreen(
 
                 StatefulImageButton(
                     onClick = onDecrement,
+                    modifier = Modifier.size(90.dp),
                     imageNormalRes = R.drawable.countresetbtn,
                     imagePressedRes = R.drawable.countresetpressedbtn,
                     contentDescription = "Уменьшить"
@@ -156,7 +240,9 @@ private fun FreeCounterScreen(
 
                 StatefulImageButton(
                     onClick = onReset,
-                    modifier = Modifier.offset(x = 5.dp),
+                    modifier = Modifier
+                        .size(90.dp)
+                        .offset(x = 5.dp),
                     imageNormalRes = R.drawable.countzerobtn,
                     imagePressedRes = R.drawable.countzeropressedbtn,
                     contentDescription = "Сбросить"
@@ -174,25 +260,42 @@ private fun ZikrCounterScreen(
     onReset: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    val russoOneFamily = FontFamily(Font(R.font.russo_one_regular))
-    val textColor = Color(0xFF3D2914)
+    // Кэшируем шрифт и цвета
+    val russoOneFamily = remember { FontFamily(Font(R.font.russo_one_regular)) }
+    val textColor = remember { Color(0xFF3D2914) }
+    val completedColor = remember { Color(0xFF81C784) }
+    val borderColor = remember { Color(0xFFD4A574) }
 
-    val backgroundGradient = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFFF8F4E8),
-            Color(0xFFE8DCC8),
-            Color(0xFFD4C4A8)
-        )
-    )
+    // Устанавливаем тёмные иконки статус-бара (для светлого фона)
+    val view = LocalView.current
+    SideEffect {
+        val window = (view.context as? Activity)?.window
+        if (window != null) {
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
+        }
+    }
 
-    val borderGradient = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFFD4A574),
-            Color(0xFFF4E4C4),
-            Color(0xFFD4A574),
-            Color(0xFFB8956C)
+    // Кэшируем градиенты
+    val backgroundGradient = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFFF8F4E8),
+                Color(0xFFE8DCC8),
+                Color(0xFFD4C4A8)
+            )
         )
-    )
+    }
+
+    val borderGradient = remember {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFD4A574),
+                Color(0xFFF4E4C4),
+                Color(0xFFD4A574),
+                Color(0xFFB8956C)
+            )
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -203,7 +306,9 @@ private fun ZikrCounterScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 12.dp, end = 12.dp, top = 48.dp, bottom = 100.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp)
                 .border(
                     width = 3.dp,
                     brush = borderGradient,
@@ -221,7 +326,8 @@ private fun ZikrCounterScreen(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(80.dp))
+            // Отступ сверху для статус-бара
+            Spacer(Modifier.statusBarsPadding().height(40.dp))
 
             ZikrCounterDisplay(
                 state = state,
@@ -229,7 +335,8 @@ private fun ZikrCounterScreen(
                 russoOneFamily = russoOneFamily
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Равномерное распределение пространства для центрирования кнопки
+            Spacer(modifier = Modifier.weight(1f))
 
             ClickableImageButton(
                 onClick = onIncrement,
@@ -246,11 +353,13 @@ private fun ZikrCounterScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(horizontal = 32.dp, vertical = 24.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatefulImageButton(
                     onClick = onNavigateBack,
+                    modifier = Modifier.size(90.dp),
                     imageNormalRes = R.drawable.countbackbtn,
                     imagePressedRes = R.drawable.countbackpressedbtn,
                     contentDescription = "Назад"
@@ -258,6 +367,7 @@ private fun ZikrCounterScreen(
 
                 StatefulImageButton(
                     onClick = onDecrement,
+                    modifier = Modifier.size(90.dp),
                     imageNormalRes = R.drawable.countresetbtn,
                     imagePressedRes = R.drawable.countresetpressedbtn,
                     contentDescription = "Уменьшить"
@@ -265,14 +375,14 @@ private fun ZikrCounterScreen(
 
                 StatefulImageButton(
                     onClick = onReset,
-                    modifier = Modifier.offset(x = 5.dp),
+                    modifier = Modifier
+                        .size(90.dp)
+                        .offset(x = 5.dp),
                     imageNormalRes = R.drawable.countzerobtn,
                     imagePressedRes = R.drawable.countzeropressedbtn,
                     contentDescription = "Сбросить"
                 )
             }
-
-            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
@@ -407,7 +517,7 @@ private fun ZikrCounterDisplay(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Завершено!",
+                    text = "ЗАВЕРШЕНО!",
                     style = TextStyle(
                         fontSize = 32.sp,
                         fontFamily = russoOneFamily,
@@ -417,7 +527,7 @@ private fun ZikrCounterDisplay(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Всего: ${state.totalZikrCount}",
+                    text = "ВСЕГО: ${state.totalZikrCount}",
                     style = TextStyle(
                         fontSize = 18.sp,
                         color = textColor.copy(alpha = 0.7f)
@@ -523,7 +633,6 @@ fun StatefulImageButton(
         painter = painterResource(id = if (pressed) imagePressedRes else imageNormalRes),
         contentDescription = contentDescription,
         modifier = modifier
-            .size(90.dp)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
