@@ -36,6 +36,13 @@ class TimerService : Service() {
         const val EXTRA_TIME = "com.example.khatmusalawattime.EXTRA_TIME"
         const val EXTRA_SOUND_ENABLED = "com.example.khatmusalawattime.EXTRA_SOUND_ENABLED"
 
+        // Ключи для сохранения состояния таймера
+        private const val PREFS_NAME = "timer_prefs"
+        private const val KEY_TIME_LEFT_MILLIS = "time_left_millis"
+        private const val KEY_TOTAL_TIME_MILLIS = "total_time_millis"
+        private const val KEY_TIMER_STATE = "timer_state"
+        private const val KEY_END_TIME = "end_time"
+
         // StateFlow для наблюдения за состоянием таймера
         private val _timerState = MutableStateFlow<TimerState>(TimerState.Idle)
         val timerState: StateFlow<TimerState> = _timerState.asStateFlow()
@@ -54,6 +61,14 @@ class TimerService : Service() {
             _timerState.value = TimerState.Idle
             _timeLeft.value = 0
             _isActive.value = false
+        }
+
+        // Метод для восстановления состояния из SharedPreferences
+        fun restoreState(state: TimerState, timeLeftSeconds: Long) {
+            Log.d(TAG, "Восстановление состояния: $state, timeLeft=${timeLeftSeconds}s")
+            _timerState.value = state
+            _timeLeft.value = timeLeftSeconds
+            _isActive.value = state is TimerState.Paused || state is TimerState.Running
         }
     }
 
@@ -80,6 +95,9 @@ class TimerService : Service() {
             @Suppress("DEPRECATION")
             getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
+
+        // Восстанавливаем состояние таймера при создании сервиса
+        loadTimerState()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -145,6 +163,8 @@ class TimerService : Service() {
         isTimerRunning = true
         _isActive.value = true
         _timerState.value = TimerState.Running
+        // Сохраняем состояние при старте
+        saveTimerState()
         Log.d(TAG, "Таймер успешно запущен и работает")
 
         // Создаем уведомление один раз при старте
@@ -156,6 +176,8 @@ class TimerService : Service() {
         countDownTimer?.cancel()
         isTimerRunning = false
         _timerState.value = TimerState.Paused
+        // Сохраняем состояние при паузе
+        saveTimerState()
         // Обновляем уведомление при паузе
         updateNotification()
     }
@@ -177,6 +199,8 @@ class TimerService : Service() {
         isTimerRunning = false
         _isActive.value = false
         _timerState.value = TimerState.Idle
+        // Очищаем сохранённое состояние
+        clearSavedTimerState()
         stopAlarmSound()
         vibrator?.cancel()
 
@@ -196,11 +220,16 @@ class TimerService : Service() {
         isTimerRunning = false
         _isActive.value = false
         _timerState.value = TimerState.Finished
+        // Очищаем сохранённое состояние
+        clearSavedTimerState()
 
         try {
             // Останавливаем foreground service и показываем обычное уведомление о завершении
             stopForeground(true)
             showTimerFinishedNotification()
+
+            // Вибрация всегда при завершении таймера
+            vibrateDevice()
 
             // Читаем актуальные настройки звука из SharedPreferences
             val sharedPrefs = getSharedPreferences("alarm_prefs", Context.MODE_PRIVATE)
@@ -208,11 +237,9 @@ class TimerService : Service() {
 
             Log.d(TAG, "Текущая настройка звука: ${if (currentSoundEnabled) "Включен" else "Выключен"}")
 
-            // Воспроизводим звук или вибрацию в зависимости от актуальных настроек
+            // Воспроизводим звук если включен
             if (currentSoundEnabled) {
                 playAlarmSound()
-            } else {
-                vibrateDevice()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Ошибка при завершении таймера: ${e.message}")
@@ -233,8 +260,8 @@ class TimerService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Таймер завершен!")
-            .setContentText("Время истекло")
+            .setContentTitle("اِلَهِى اَنْتَ مَقْصُوْدِيْ وَرِضَاكَ مَطْلُوْبِيْ")
+            .setContentText("Илагьи анта макъсуди ва риضака мат1луби")
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentIntent(pendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Сбросить", resetAction)
@@ -430,11 +457,103 @@ class TimerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "onDestroy - Сервис уничтожен")
+
+        // Сохраняем состояние если таймер был на паузе или работал
+        if (_timerState.value is TimerState.Paused || _timerState.value is TimerState.Running) {
+            saveTimerState()
+        }
+
         countDownTimer?.cancel()
         stopAlarmSound()
 
         // Остановка вибрации при уничтожении сервиса
         vibrator?.cancel()
+    }
+
+    /**
+     * Сохраняет состояние таймера в SharedPreferences
+     */
+    private fun saveTimerState() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val stateString = when (_timerState.value) {
+            is TimerState.Idle -> "idle"
+            is TimerState.Running -> "running"
+            is TimerState.Paused -> "paused"
+            is TimerState.Finished -> "finished"
+        }
+
+        prefs.edit()
+            .putLong(KEY_TIME_LEFT_MILLIS, timeLeftInMillis)
+            .putLong(KEY_TOTAL_TIME_MILLIS, totalTimeMillis)
+            .putString(KEY_TIMER_STATE, stateString)
+            .putLong(KEY_END_TIME, if (isTimerRunning) System.currentTimeMillis() + timeLeftInMillis else 0)
+            .apply()
+
+        Log.d(TAG, "Состояние таймера сохранено: state=$stateString, timeLeft=${timeLeftInMillis/1000}s")
+    }
+
+    /**
+     * Загружает состояние таймера из SharedPreferences
+     */
+    private fun loadTimerState(): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val stateString = prefs.getString(KEY_TIMER_STATE, "idle") ?: "idle"
+        val savedTimeLeft = prefs.getLong(KEY_TIME_LEFT_MILLIS, 0)
+        val savedTotalTime = prefs.getLong(KEY_TOTAL_TIME_MILLIS, 0)
+        val endTime = prefs.getLong(KEY_END_TIME, 0)
+
+        Log.d(TAG, "Загрузка состояния: state=$stateString, timeLeft=${savedTimeLeft/1000}s, endTime=$endTime")
+
+        if (stateString == "idle" || stateString == "finished" || savedTimeLeft <= 0) {
+            return false
+        }
+
+        // Если таймер был running, вычисляем сколько времени прошло
+        if (stateString == "running" && endTime > 0) {
+            val currentTime = System.currentTimeMillis()
+            val remainingTime = endTime - currentTime
+
+            if (remainingTime <= 0) {
+                // Таймер должен был завершиться пока приложение было закрыто
+                clearSavedTimerState()
+                return false
+            }
+
+            timeLeftInMillis = remainingTime
+            totalTimeMillis = savedTotalTime
+            _timeLeft.value = remainingTime / 1000
+            _timerState.value = TimerState.Paused
+            _isActive.value = true
+            Log.d(TAG, "Таймер восстановлен (был running): осталось ${remainingTime/1000}s")
+            return true
+        }
+
+        // Если таймер был на паузе
+        if (stateString == "paused") {
+            timeLeftInMillis = savedTimeLeft
+            totalTimeMillis = savedTotalTime
+            _timeLeft.value = savedTimeLeft / 1000
+            _timerState.value = TimerState.Paused
+            _isActive.value = true
+            Log.d(TAG, "Таймер восстановлен (paused): осталось ${savedTimeLeft/1000}s")
+            return true
+        }
+
+        return false
+    }
+
+    /**
+     * Очищает сохранённое состояние таймера
+     */
+    private fun clearSavedTimerState() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .remove(KEY_TIME_LEFT_MILLIS)
+            .remove(KEY_TOTAL_TIME_MILLIS)
+            .remove(KEY_TIMER_STATE)
+            .remove(KEY_END_TIME)
+            .apply()
+        Log.d(TAG, "Сохранённое состояние таймера очищено")
     }
 }
 

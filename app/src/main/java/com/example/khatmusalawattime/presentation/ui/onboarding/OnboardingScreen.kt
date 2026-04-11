@@ -297,6 +297,8 @@ private fun OnboardingPageContent(
             animationTriggered = false
             delay(100)
             animationTriggered = true
+        } else {
+            animationTriggered = false
         }
     }
 
@@ -309,7 +311,7 @@ private fun OnboardingPageContent(
     ) {
         // Большая иконка
         AnimatedVisibility(
-            visible = animationTriggered || !isCurrentPage,
+            visible = animationTriggered,
             enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { -50 }
         ) {
             Box(
@@ -335,7 +337,7 @@ private fun OnboardingPageContent(
 
         // Заголовок
         AnimatedVisibility(
-            visible = animationTriggered || !isCurrentPage,
+            visible = animationTriggered,
             enter = fadeIn(tween(500, delayMillis = 150)) + slideInVertically(tween(500, delayMillis = 150)) { 30 }
         ) {
             Text(
@@ -352,7 +354,7 @@ private fun OnboardingPageContent(
 
         // Подзаголовок
         AnimatedVisibility(
-            visible = animationTriggered || !isCurrentPage,
+            visible = animationTriggered,
             enter = fadeIn(tween(500, delayMillis = 250)) + slideInVertically(tween(500, delayMillis = 250)) { 30 }
         ) {
             Text(
@@ -369,7 +371,7 @@ private fun OnboardingPageContent(
 
         // Карточка с фичами
         AnimatedVisibility(
-            visible = animationTriggered || !isCurrentPage,
+            visible = animationTriggered,
             enter = fadeIn(tween(500, delayMillis = 350)) + slideInVertically(tween(500, delayMillis = 350)) { 50 }
         ) {
             Box(

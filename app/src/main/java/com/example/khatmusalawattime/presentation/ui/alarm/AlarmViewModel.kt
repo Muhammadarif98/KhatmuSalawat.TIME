@@ -11,7 +11,6 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.khatmusalawattime.R
@@ -61,12 +60,15 @@ class AlarmViewModel @Inject constructor(
         Log.d(TAG, "Инициализация AlarmViewModel")
         // Инициализируем форматированное время при создании ViewModel
         updateFormattedTime(_selectedTime.value * 60)
-        
+
         // Загружаем сохраненное изображение пользователя при инициализации
         loadUserImage()
-        
+
         // Загружаем настройку звука
         loadSoundSettings()
+
+        // Восстанавливаем сохранённое состояние таймера
+        restoreSavedTimerState()
         
         // Настраиваем наблюдение за изменениями времени
         viewModelScope.launch {
@@ -381,7 +383,50 @@ class AlarmViewModel @Inject constructor(
         
         Log.d(TAG, "Режим звука изменен на: ${if (newValue) "Звук" else "Вибрация"}")
     }
-    
+
+    /**
+     * Восстанавливает сохранённое состояние таймера из SharedPreferences
+     */
+    private fun restoreSavedTimerState() {
+        val prefs = application.getSharedPreferences("timer_prefs", Context.MODE_PRIVATE)
+        val stateString = prefs.getString("timer_state", "idle") ?: "idle"
+        val savedTimeLeft = prefs.getLong("time_left_millis", 0)
+        val endTime = prefs.getLong("end_time", 0)
+
+        Log.d(TAG, "Восстановление состояния: state=$stateString, timeLeft=${savedTimeLeft/1000}s")
+
+        if (stateString == "idle" || stateString == "finished" || savedTimeLeft <= 0) {
+            return
+        }
+
+        // Если таймер был running, вычисляем сколько времени прошло
+        if (stateString == "running" && endTime > 0) {
+            val currentTime = System.currentTimeMillis()
+            val remainingTime = endTime - currentTime
+
+            if (remainingTime <= 0) {
+                // Таймер завершился — очищаем
+                prefs.edit {
+                    remove("time_left_millis")
+                    remove("total_time_millis")
+                    remove("timer_state")
+                    remove("end_time")
+                }
+                return
+            }
+
+            // Восстанавливаем состояние в TimerService и обновляем UI
+            TimerService.restoreState(TimerState.Paused, remainingTime / 1000)
+            updateFormattedTime(remainingTime / 1000)
+            Log.d(TAG, "Таймер восстановлен (был running): осталось ${remainingTime/1000}s")
+        } else if (stateString == "paused") {
+            // Восстанавливаем состояние в TimerService и обновляем UI
+            TimerService.restoreState(TimerState.Paused, savedTimeLeft / 1000)
+            updateFormattedTime(savedTimeLeft / 1000)
+            Log.d(TAG, "Таймер восстановлен (paused): осталось ${savedTimeLeft/1000}s")
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         Log.d(TAG, "onCleared - ViewModel уничтожена")

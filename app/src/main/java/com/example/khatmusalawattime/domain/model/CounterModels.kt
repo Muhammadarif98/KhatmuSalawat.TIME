@@ -138,7 +138,7 @@ object WirdPreset {
         ZikrItem(
             id = "wird_istighfar",
             name = "ИСТИГЪФАР",
-            arabicText = "أَسْتَغْفِرُ اللهَ الَّذِي لَا إِلَهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ وَأَتُوبُ إِلَيْهِ",
+            arabicText = "أَسْتَغْفِرُ اللهَ الَّذِي لَا إِلَهَ إِلَّا هُوَ الْحَيَّ الْقَيُّومَ وَأَتُوبُ إِلَيْهِ",
             targetCount = countPerZikr,
             color = 0xFFFF8A65 // оранжевый
         ),

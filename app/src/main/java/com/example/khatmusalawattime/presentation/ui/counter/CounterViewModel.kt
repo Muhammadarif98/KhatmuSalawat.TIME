@@ -9,7 +9,6 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import android.widget.Toast
-import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -129,8 +128,8 @@ class CounterViewModel @Inject constructor(
         val (savedIndex, savedCount) = when (mode) {
             is CounterMode.Azkar -> loadAzkarState()
             is CounterMode.Wird -> {
-                val (_, index, count) = loadWirdState()
-                Pair(index, count)
+                // Загружаем сохранённое состояние для конкретного countPerZikr
+                loadWirdStateForCount(mode.countPerZikr)
             }
             is CounterMode.Custom -> loadCustomState()
             is CounterMode.Free -> Pair(0, 0)
@@ -416,25 +415,25 @@ class CounterViewModel @Inject constructor(
     }
 
     /**
-     * Сохраняет состояние режима Wird
+     * Сохраняет состояние режима Wird для конкретного countPerZikr
      */
     private fun saveWirdState(countPerZikr: Int, index: Int, count: Int) {
         sharedPrefs.edit {
             putInt(KEY_WIRD_COUNT_PER_ZIKR, countPerZikr)
-            putInt(KEY_WIRD_INDEX, index)
-            putInt(KEY_WIRD_COUNT, count)
+            // Сохраняем с ключом, включающим countPerZikr
+            putInt("wird_${countPerZikr}_index", index)
+            putInt("wird_${countPerZikr}_count", count)
         }
     }
 
     /**
-     * Загружает состояние режима Wird
-     * @return Triple(countPerZikr, index, count)
+     * Загружает состояние режима Wird для конкретного countPerZikr
+     * @return Pair(index, count)
      */
-    private fun loadWirdState(): Triple<Int, Int, Int> {
-        val countPerZikr = sharedPrefs.getInt(KEY_WIRD_COUNT_PER_ZIKR, 100)
-        val index = sharedPrefs.getInt(KEY_WIRD_INDEX, 0)
-        val count = sharedPrefs.getInt(KEY_WIRD_COUNT, 0)
-        return Triple(countPerZikr, index, count)
+    private fun loadWirdStateForCount(countPerZikr: Int): Pair<Int, Int> {
+        val index = sharedPrefs.getInt("wird_${countPerZikr}_index", 0)
+        val count = sharedPrefs.getInt("wird_${countPerZikr}_count", 0)
+        return Pair(index, count)
     }
 
     /**
